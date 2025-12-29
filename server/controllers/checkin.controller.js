@@ -93,7 +93,11 @@ export const generateCheckInToken = async (req, res, next) => {
       },
     });
 
-    const checkInUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/checkin/${token}`;
+    // Build URL dynamically from request origin
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const baseUrl = process.env.FRONTEND_URL || `${protocol}://${host}`;
+    const checkInUrl = `${baseUrl}/checkin/${token}`;
 
     res.json({
       token,

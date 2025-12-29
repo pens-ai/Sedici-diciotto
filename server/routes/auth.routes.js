@@ -11,6 +11,7 @@ import {
   forgotPassword,
   resetPassword,
   getMe,
+  getUsers,
 } from '../controllers/auth.controller.js';
 
 const router = Router();
@@ -69,5 +70,6 @@ router.post('/refresh', refreshTokens);
 router.post('/forgot-password', passwordResetLimiter, forgotPassword);
 router.post('/reset-password/:token', passwordResetLimiter, validate(passwordValidation), resetPassword);
 router.get('/me', authenticate, getMe);
+router.get('/users', authenticate, getUsers);
 
 export default router;

@@ -32,7 +32,7 @@ import {
   changePassword,
 } from '../api/settings.api';
 import { getChannels, createChannel, updateChannel, deleteChannel } from '../api/bookings.api';
-import { register as createUser } from '../api/auth.api';
+import { register as createUser, getUsers } from '../api/auth.api';
 
 const profileSchema = z.object({
   firstName: z.string().min(2, 'Nome richiesto'),
@@ -122,6 +122,11 @@ export const Settings = () => {
   });
 
   const channels = channelsData?.data || channelsData || [];
+
+  const { data: usersData = [], isLoading: usersLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: getUsers,
+  });
 
   // Find current theme color on mount
   useEffect(() => {
@@ -287,6 +292,7 @@ export const Settings = () => {
   const createUserMutation = useMutation({
     mutationFn: createUser,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowNewUserForm(false);
       resetNewUser();
       toast.success('Utente creato con successo');
@@ -783,10 +789,46 @@ export const Settings = () => {
             </form>
           )}
 
-          <div className="text-center py-8 text-gray-500">
-            <Users size={48} className="mx-auto mb-4 text-gray-300" />
-            <p>Gli utenti creati potranno accedere con le credenziali fornite.</p>
-            <p className="text-sm mt-2">Ogni utente avrà il proprio spazio dati separato.</p>
+          {/* Users List */}
+          <div className="space-y-3">
+            {usersLoading ? (
+              <div className="text-center py-8 text-gray-500">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent mx-auto mb-4"></div>
+                <p>Caricamento utenti...</p>
+              </div>
+            ) : usersData.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users size={48} className="mx-auto mb-4 text-gray-300" />
+                <p>Nessun utente trovato.</p>
+                <p className="text-sm mt-2">Clicca "Nuovo Utente" per crearne uno.</p>
+              </div>
+            ) : (
+              usersData.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-bold text-primary-600">
+                        {u.firstName?.[0] || u.email[0].toUpperCase()}
+                        {u.lastName?.[0] || ''}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">
+                        {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.email}
+                      </h4>
+                      <p className="text-sm text-gray-500">{u.email}</p>
+                    </div>
+                  </div>
+                  <div className="text-right text-sm text-gray-500">
+                    <p>Creato il</p>
+                    <p className="font-medium">{new Date(u.createdAt).toLocaleDateString('it-IT')}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </Card>
       )}

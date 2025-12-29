@@ -288,6 +288,27 @@ export const resetPassword = async (req, res, next) => {
   }
 };
 
+// Get all users (admin only)
+export const getUsers = async (req, res, next) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isEmailVerified: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(users);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get current user
 export const getMe = async (req, res, next) => {
   try {

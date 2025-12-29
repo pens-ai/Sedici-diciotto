@@ -40,3 +40,8 @@ export const resendVerification = async (email) => {
   const response = await api.post('/auth/resend-verification', { email });
   return response.data;
 };
+
+export const getUsers = async () => {
+  const response = await api.get('/auth/users');
+  return response.data;
+};
