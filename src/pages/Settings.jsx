@@ -15,6 +15,8 @@ import {
   Check,
   Plus,
   Trash2,
+  Users,
+  UserPlus,
 } from 'lucide-react';
 import { Card } from '../components/Card';
 import Button from '../components/Button';
@@ -30,6 +32,7 @@ import {
   changePassword,
 } from '../api/settings.api';
 import { getChannels, createChannel, updateChannel, deleteChannel } from '../api/bookings.api';
+import { register as createUser } from '../api/auth.api';
 
 const profileSchema = z.object({
   firstName: z.string().min(2, 'Nome richiesto'),
@@ -66,7 +69,19 @@ const tabs = [
   { id: 'company', label: 'Azienda', icon: Building2 },
   { id: 'theme', label: 'Aspetto', icon: Palette },
   { id: 'security', label: 'Sicurezza', icon: Shield },
+  { id: 'users', label: 'Utenti', icon: Users },
 ];
+
+const newUserSchema = z.object({
+  email: z.string().email('Email non valida'),
+  password: z
+    .string()
+    .min(8, 'Almeno 8 caratteri')
+    .regex(/[A-Z]/, 'Almeno una maiuscola')
+    .regex(/[0-9]/, 'Almeno un numero'),
+  firstName: z.string().min(2, 'Nome richiesto'),
+  lastName: z.string().min(2, 'Cognome richiesto'),
+});
 
 const themeColors = [
   { name: 'Viola', primary: '#6b4ce6', secondary: '#5a3ec4' },
@@ -87,6 +102,8 @@ export const Settings = () => {
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [showNewChannelForm, setShowNewChannelForm] = useState(false);
   const [newChannel, setNewChannel] = useState({ name: '', commissionRate: 0, color: '#6B7280' });
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
 
   // Queries
   const { data: profile } = useQuery({
@@ -157,6 +174,16 @@ export const Settings = () => {
     formState: { errors: passwordErrors },
   } = useForm({
     resolver: zodResolver(passwordSchema),
+  });
+
+  // New user form
+  const {
+    register: registerNewUser,
+    handleSubmit: handleSubmitNewUser,
+    reset: resetNewUser,
+    formState: { errors: newUserErrors },
+  } = useForm({
+    resolver: zodResolver(newUserSchema),
   });
 
   // Mutations
@@ -257,6 +284,18 @@ export const Settings = () => {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      setShowNewUserForm(false);
+      resetNewUser();
+      toast.success('Utente creato con successo');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error || 'Errore durante la creazione');
+    },
+  });
+
   // Handlers
   const onSubmitProfile = (data) => {
     profileMutation.mutate(data);
@@ -296,6 +335,10 @@ export const Settings = () => {
       id: channel.id,
       data: { commissionRate: parseFloat(newRate) || 0 },
     });
+  };
+
+  const onSubmitNewUser = (data) => {
+    createUserMutation.mutate(data);
   };
 
   return (
@@ -652,6 +695,98 @@ export const Settings = () => {
                 </span>
               </div>
             </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Users Tab */}
+      {activeTab === 'users' && (
+        <Card>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Gestione Utenti</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Crea nuovi account per altri utenti
+              </p>
+            </div>
+            <Button onClick={() => setShowNewUserForm(!showNewUserForm)}>
+              <UserPlus size={18} />
+              Nuovo Utente
+            </Button>
+          </div>
+
+          {showNewUserForm && (
+            <form onSubmit={handleSubmitNewUser(onSubmitNewUser)} className="bg-gray-50 rounded-xl p-6 mb-6 space-y-4">
+              <h3 className="font-semibold text-gray-900 mb-4">Crea Nuovo Utente</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Nome"
+                  {...registerNewUser('firstName')}
+                  error={newUserErrors.firstName?.message}
+                />
+                <Input
+                  label="Cognome"
+                  {...registerNewUser('lastName')}
+                  error={newUserErrors.lastName?.message}
+                />
+              </div>
+
+              <Input
+                label="Email"
+                type="email"
+                {...registerNewUser('email')}
+                error={newUserErrors.email?.message}
+              />
+
+              <div className="relative">
+                <Input
+                  label="Password"
+                  type={showNewUserPassword ? 'text' : 'password'}
+                  {...registerNewUser('password')}
+                  error={newUserErrors.password?.message}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                  className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                >
+                  {showNewUserPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+
+              <div className="text-xs text-gray-500 space-y-1 bg-white p-3 rounded-lg">
+                <p className="font-medium">La password deve contenere:</p>
+                <ul className="list-disc list-inside">
+                  <li>Almeno 8 caratteri</li>
+                  <li>Almeno una lettera maiuscola</li>
+                  <li>Almeno un numero</li>
+                </ul>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowNewUserForm(false);
+                    resetNewUser();
+                  }}
+                >
+                  Annulla
+                </Button>
+                <Button type="submit" disabled={createUserMutation.isPending}>
+                  <UserPlus size={18} />
+                  {createUserMutation.isPending ? 'Creazione...' : 'Crea Utente'}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          <div className="text-center py-8 text-gray-500">
+            <Users size={48} className="mx-auto mb-4 text-gray-300" />
+            <p>Gli utenti creati potranno accedere con le credenziali fornite.</p>
+            <p className="text-sm mt-2">Ogni utente avrà il proprio spazio dati separato.</p>
           </div>
         </Card>
       )}

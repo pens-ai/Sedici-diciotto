@@ -3,7 +3,7 @@ import { hashPassword, comparePassword, generateRandomToken } from '../utils/pas
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, getRefreshTokenExpiry } from '../utils/jwt.js';
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../services/email.service.js';
 
-// Register new user
+// Create new user (admin only - requires authentication)
 export const register = async (req, res, next) => {
   try {
     const { email, password, firstName, lastName } = req.body;
@@ -17,17 +17,14 @@ export const register = async (req, res, next) => {
     // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Generate verification token
-    const emailVerifyToken = generateRandomToken();
-
-    // Create user with default settings and booking channels
+    // Create user with email already verified (no email verification needed)
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
         firstName,
         lastName,
-        emailVerifyToken,
+        isEmailVerified: true, // Auto-verify since admin creates the user
         settings: {
           create: {
             companyName: firstName ? `${firstName}'s Company` : 'La Mia Azienda',
@@ -55,16 +52,8 @@ export const register = async (req, res, next) => {
       include: { settings: true },
     });
 
-    // Send verification email
-    try {
-      await sendVerificationEmail(email, emailVerifyToken, firstName);
-    } catch (emailError) {
-      console.error('Error sending verification email:', emailError);
-      // Don't fail registration if email fails
-    }
-
     res.status(201).json({
-      message: 'Registrazione completata. Controlla la tua email per verificare l\'account.',
+      message: 'Utente creato con successo.',
       user: {
         id: user.id,
         email: user.email,
@@ -97,14 +86,6 @@ export const login = async (req, res, next) => {
     const isValidPassword = await comparePassword(password, user.passwordHash);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Credenziali non valide' });
-    }
-
-    // Check email verification
-    if (!user.isEmailVerified) {
-      return res.status(403).json({
-        error: 'Email non verificata. Controlla la tua casella di posta.',
-        code: 'EMAIL_NOT_VERIFIED',
-      });
     }
 
     // Generate tokens

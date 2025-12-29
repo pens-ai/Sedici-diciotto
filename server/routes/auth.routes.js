@@ -8,11 +8,9 @@ import {
   login,
   logout,
   refreshTokens,
-  verifyEmail,
   forgotPassword,
   resetPassword,
   getMe,
-  resendVerification,
 } from '../controllers/auth.controller.js';
 
 const router = Router();
@@ -63,14 +61,13 @@ const passwordValidation = [
 ];
 
 // Routes
-router.post('/register', authLimiter, validate(registerValidation), register);
+// Register requires authentication (only logged-in users can create new accounts)
+router.post('/register', authenticate, validate(registerValidation), register);
 router.post('/login', authLimiter, validate(loginValidation), login);
 router.post('/logout', logout);
 router.post('/refresh', refreshTokens);
-router.get('/verify-email/:token', verifyEmail);
 router.post('/forgot-password', passwordResetLimiter, forgotPassword);
 router.post('/reset-password/:token', passwordResetLimiter, validate(passwordValidation), resetPassword);
 router.get('/me', authenticate, getMe);
-router.post('/resend-verification', authLimiter, resendVerification);
 
 export default router;
