@@ -1,0 +1,367 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ AUTHENTICATION ============
+
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  passwordHash        String
+  firstName           String?
+  lastName            String?
+  phone               String?
+  isEmailVerified     Boolean   @default(false)
+  emailVerifyToken    String?
+  resetPasswordToken  String?
+  resetPasswordExpiry DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  refreshTokens RefreshToken[]
+  settings      UserSettings?
+  properties    Property[]
+  products      Product[]
+  categories    Category[]
+  bookings      Booking[]
+  fixedCosts    FixedCost[]
+  channels      BookingChannel[]
+  notifications Notification[]
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model UserSettings {
+  id             String  @id @default(uuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName    String?
+  companyLogo    String?
+  vatNumber      String?
+  fiscalCode     String?
+  address        String?
+  city           String?
+  postalCode     String?
+  country        String?
+  phone          String?
+  companyEmail   String?
+  primaryColor   String  @default("#6b4ce6")
+  secondaryColor String  @default("#5a3ec4")
+  logoIcon       String  @default("Home")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ PROPERTIES ============
+
+model Property {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  address      String?
+  beds         Int
+  bathrooms    Int
+  squareMeters Int?
+  status       String         @default("ACTIVE")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  images     PropertyImage[]
+  templates  Template[]
+  bookings   Booking[]
+  fixedCosts FixedCost[]
+
+  @@index([userId])
+  @@index([name])
+}
+
+model PropertyImage {
+  id           String   @id @default(uuid())
+  propertyId   String
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url          String
+  thumbnailUrl String?
+  isPrimary    Boolean  @default(false)
+  orderIndex   Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([propertyId])
+}
+
+model Template {
+  id          String   @id @default(uuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name        String
+  minGuests   Int
+  maxGuests   Int
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products TemplateProduct[]
+
+  @@index([propertyId])
+}
+
+model TemplateProduct {
+  id         String   @id @default(uuid())
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity   Float
+  createdAt  DateTime @default(now())
+
+  @@unique([templateId, productId])
+  @@index([templateId])
+  @@index([productId])
+}
+
+// ============ PRODUCTS ============
+
+model Category {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  slug       String
+  icon       String?
+  color      String?
+  orderIndex Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  products Product[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+}
+
+model Product {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId        String
+  category          Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  name              String
+  description       String?
+  // Gestione confezioni: es. pacco carta igienica 2€ con 6 rotoli
+  packageCost       Float    @default(0)  // Costo della confezione (es. 2€)
+  packageQuantity   Float    @default(1)  // Unità nella confezione (es. 6 rotoli)
+  price             Float                  // Costo unitario (calcolato: packageCost/packageQuantity)
+  unit              String                 // Unità di misura (es. "rotolo", "pezzo", "ml")
+  stockQuantity     Float?
+  lowStockThreshold Float?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  templates    TemplateProduct[]
+  bookingCosts BookingProductCost[]
+  priceHistory ProductPriceHistory[]
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([name])
+}
+
+model ProductPriceHistory {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  oldPrice  Float?
+  newPrice  Float
+  changedAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// ============ BOOKINGS ============
+
+model BookingChannel {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  commissionRate Float
+  color          String?
+  createdAt      DateTime @default(now())
+
+  bookings Booking[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Booking {
+  id               String          @id @default(uuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId       String
+  property         Property        @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  channelId        String?
+  channel          BookingChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+
+  guestName        String
+  guestEmail       String?
+  guestPhone       String?
+  checkIn          DateTime
+  checkOut         DateTime
+  nights           Int
+  numberOfGuests   Int
+
+  channelBookingId String?
+  grossRevenue     Float
+  commissionRate   Float
+  commissionAmount Float
+  netRevenue       Float
+  variableCosts    Float    @default(0)
+  netMargin        Float
+
+  status           String   @default("CONFIRMED")
+  specialRequests  String?
+  notes            String?
+
+  // Check-in link system
+  checkInToken     String?  @unique
+  checkInTokenExp  DateTime?
+  checkInCompleted Boolean  @default(false)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  guests       GuestRegistryEntry[]
+  productCosts BookingProductCost[]
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([checkIn])
+  @@index([checkOut])
+  @@index([status])
+  @@index([checkInToken])
+}
+
+model GuestRegistryEntry {
+  id               String    @id @default(uuid())
+  bookingId        String
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Anagrafica
+  firstName        String
+  lastName         String
+  sex              String?   // M or F
+  birthDate        DateTime?
+  birthCity        String?   // Nome comune o citta estera
+  birthProvince    String?   // Sigla provincia (per italiani)
+  birthCountry     String?   // Codice ISTAT nazione (100 = Italia)
+  citizenship      String?   // Codice ISTAT cittadinanza
+
+  // Documento
+  documentType     String?   // IDENT, PASOR, PATEN, etc.
+  documentNumber   String?
+  documentIssuer   String?   // Codice ISTAT comune/stato che ha rilasciato
+  documentExpiry   DateTime?
+
+  // Foto documenti
+  documentFrontUrl String?
+  documentBackUrl  String?
+
+  // Stato
+  isMainGuest      Boolean   @default(false) // Capofamiglia/capogruppo
+  isConfirmed      Boolean   @default(false)
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([bookingId])
+}
+
+model BookingProductCost {
+  id          String   @id @default(uuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName String
+  quantity    Float
+  unitPrice   Float
+  totalPrice  Float
+  createdAt   DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([productId])
+}
+
+// ============ FIXED COSTS ============
+
+model FixedCostCategory {
+  id        String      @id @default(uuid())
+  name      String
+  slug      String      @unique
+  icon      String?
+  createdAt DateTime    @default(now())
+
+  costs FixedCost[]
+}
+
+model FixedCost {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId  String?
+  property    Property?         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    FixedCostCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  description String
+  amount      Float
+  frequency   String            @default("MONTHLY")
+  startDate   DateTime
+  endDate     DateTime?
+  notes       String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([categoryId])
+}
+
+// ============ NOTIFICATIONS ============
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  link      String?
+  data      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
