@@ -64,7 +64,7 @@ model UserSettings {
   companyEmail   String?
   primaryColor   String  @default("#6b4ce6")
   secondaryColor String  @default("#5a3ec4")
-  logoIcon       String  @default("Home")
+  logoIcon       String  @default("🏠")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
