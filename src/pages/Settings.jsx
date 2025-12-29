@@ -95,7 +95,7 @@ const themeColors = [
 export const Settings = () => {
   const queryClient = useQueryClient();
   const { user, updateUser } = useAuth();
-  const { setCustomization, setCompanyInfo } = useApp();
+  const { customization, setCustomization, setCompanyInfo } = useApp();
   const [activeTab, setActiveTab] = useState('profile');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -231,11 +231,11 @@ export const Settings = () => {
     mutationFn: updateTheme,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['company'] });
-      // Update AppContext customization
+      // Update AppContext customization - preserve existing logoIcon
       setCustomization({
+        ...customization,
         primaryColor: data.primaryColor || '#6b4ce6',
         secondaryColor: data.secondaryColor || '#5a3ec4',
-        logoIcon: data.logoIcon || '🏠',
       });
       toast.success('Tema aggiornato');
     },
