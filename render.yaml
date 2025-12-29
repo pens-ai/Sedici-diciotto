@@ -9,7 +9,7 @@ services:
     name: gestionale-case-vacanza
     env: node
     plan: free
-    buildCommand: npm install && npm run build && npx prisma db push
+    buildCommand: npm install --include=dev && npm run build && npx prisma db push
     startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
