@@ -83,6 +83,9 @@ model Property {
   bathrooms    Int
   squareMeters Int?
   status       String         @default("ACTIVE")
+  iCalToken    String?        @unique // Token for iCal export URL
+  iCalUrls     Json?          // External iCal URLs to import [{name: "Booking", url: "..."}, ...]
+  iCalLastSync DateTime?      // Last sync timestamp
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
@@ -93,6 +96,7 @@ model Property {
 
   @@index([userId])
   @@index([name])
+  @@index([iCalToken])
 }
 
 model PropertyImage {
@@ -231,6 +235,8 @@ model Booking {
   numberOfGuests   Int
 
   channelBookingId String?
+  iCalUid          String?  // UID from external iCal (to prevent duplicates)
+  iCalSource       String?  // Source name (e.g., "Booking.com", "Airbnb")
   grossRevenue     Float
   commissionRate   Float
   commissionAmount Float

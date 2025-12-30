@@ -17,6 +17,7 @@ import costsRoutes from './routes/costs.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
 import checkinRoutes from './routes/checkin.routes.js';
+import icalRoutes from './routes/ical.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -86,6 +87,7 @@ app.use('/api/costs', costsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/checkin', checkinRoutes);
+app.use('/api/ical', icalRoutes);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, Trash2, Home, FileText, ChevronDown, ChevronUp, Users, Package, Bed, Bath, Settings, X, Check, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Home, FileText, ChevronDown, ChevronUp, Users, Package, Bed, Bath, Settings, X, Check, Search, Calendar, Link, RefreshCw, Copy, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '../components/Card';
 import Button from '../components/Button';
@@ -8,6 +8,7 @@ import { Modal } from '../components/Modal';
 import { Input, Textarea } from '../components/Input';
 import * as propertiesApi from '../api/properties.api';
 import * as productsApi from '../api/products.api';
+import * as icalApi from '../api/ical.api';
 
 // Emoji per categorie prodotti (stesse della pagina Products)
 const getCategoryEmoji = (categoryName) => {
@@ -43,6 +44,11 @@ export const Properties = () => {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [expandedProperties, setExpandedProperties] = useState({});
+
+  // iCal management
+  const [expandedIcal, setExpandedIcal] = useState({});
+  const [newIcalUrl, setNewIcalUrl] = useState({ name: '', url: '' });
+  const [addingIcalTo, setAddingIcalTo] = useState(null);
 
   // Queries
   const { data: propertiesData, isLoading } = useQuery({
@@ -134,6 +140,55 @@ export const Properties = () => {
     },
   });
 
+  // iCal mutations
+  const generateTokenMutation = useMutation({
+    mutationFn: (propertyId) => icalApi.generateICalToken(propertyId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      navigator.clipboard.writeText(data.url);
+      toast.success('Link iCal generato e copiato!');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error || 'Errore durante la generazione');
+    },
+  });
+
+  const addIcalUrlMutation = useMutation({
+    mutationFn: ({ propertyId, data }) => icalApi.addICalUrl(propertyId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      setNewIcalUrl({ name: '', url: '' });
+      setAddingIcalTo(null);
+      toast.success('Calendario esterno aggiunto');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error || 'Errore durante l\'aggiunta');
+    },
+  });
+
+  const removeIcalUrlMutation = useMutation({
+    mutationFn: ({ propertyId, urlId }) => icalApi.removeICalUrl(propertyId, urlId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      toast.success('Calendario esterno rimosso');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error || 'Errore durante la rimozione');
+    },
+  });
+
+  const syncIcalMutation = useMutation({
+    mutationFn: (propertyId) => icalApi.syncICalendar(propertyId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      toast.success(`Sincronizzazione completata: ${data.imported} importate, ${data.skipped} già presenti`);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error || 'Errore durante la sincronizzazione');
+    },
+  });
+
   const handleAddProperty = () => {
     setEditingProperty(null);
     setPropertyForm({ name: '', beds: '', bathrooms: '', description: '' });
@@ -177,6 +232,18 @@ export const Properties = () => {
       ...prev,
       [propertyId]: !prev[propertyId]
     }));
+  };
+
+  const toggleIcalExpand = (propertyId) => {
+    setExpandedIcal(prev => ({
+      ...prev,
+      [propertyId]: !prev[propertyId]
+    }));
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Link copiato!');
   };
 
   const handleAddTemplate = (property) => {
@@ -456,6 +523,189 @@ export const Properties = () => {
                             )}
                           </div>
                         ))
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* iCal Sync section */}
+                <div className="border-t-2 border-dashed border-gray-200">
+                  <button
+                    onClick={() => toggleIcalExpand(property.id)}
+                    className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-base font-semibold text-gray-900">
+                          Sincronizzazione Calendario
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Collega Booking.com, Airbnb e altri
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {(property.iCalUrls?.length > 0) && (
+                        <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
+                          {property.iCalUrls.length} collegati
+                        </span>
+                      )}
+                      {expandedIcal[property.id] ? (
+                        <ChevronUp className="w-6 h-6 text-gray-400" />
+                      ) : (
+                        <ChevronDown className="w-6 h-6 text-gray-400" />
+                      )}
+                    </div>
+                  </button>
+
+                  {expandedIcal[property.id] && (
+                    <div className="px-4 sm:px-5 pb-5 space-y-4">
+                      {/* Export Section */}
+                      <div className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                        <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                          <ExternalLink className="w-4 h-4" />
+                          Esporta il tuo calendario
+                        </h4>
+                        <p className="text-sm text-blue-700 mb-3">
+                          Copia questo link su Booking.com e Airbnb per bloccare le date delle tue prenotazioni
+                        </p>
+                        {property.iCalToken ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              readOnly
+                              value={`${window.location.origin}/api/ical/export/${property.iCalToken}.ics`}
+                              className="flex-1 px-3 py-2 bg-white border-2 border-blue-300 rounded-lg text-sm"
+                            />
+                            <button
+                              onClick={() => copyToClipboard(`${window.location.origin}/api/ical/export/${property.iCalToken}.ics`)}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
+                            >
+                              <Copy className="w-4 h-4" />
+                              Copia
+                            </button>
+                          </div>
+                        ) : (
+                          <Button
+                            onClick={() => generateTokenMutation.mutate(property.id)}
+                            disabled={generateTokenMutation.isPending}
+                            className="w-full sm:w-auto"
+                          >
+                            <Link className="w-4 h-4 mr-2" />
+                            {generateTokenMutation.isPending ? 'Generazione...' : 'Genera Link iCal'}
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Import Section */}
+                      <div className="p-4 bg-green-50 rounded-xl border-2 border-green-200">
+                        <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
+                          <Link className="w-4 h-4" />
+                          Importa calendari esterni
+                        </h4>
+                        <p className="text-sm text-green-700 mb-3">
+                          Incolla i link iCal di Booking.com, Airbnb per sincronizzare le prenotazioni
+                        </p>
+
+                        {/* Existing iCal URLs */}
+                        {property.iCalUrls?.length > 0 && (
+                          <div className="space-y-2 mb-3">
+                            {property.iCalUrls.map((ical) => (
+                              <div key={ical.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                                <div className="flex items-center gap-3">
+                                  <span className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-sm">
+                                    {ical.name.charAt(0).toUpperCase()}
+                                  </span>
+                                  <div>
+                                    <p className="font-medium text-gray-900">{ical.name}</p>
+                                    <p className="text-xs text-gray-500 truncate max-w-[200px]">{ical.url}</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => removeIcalUrlMutation.mutate({ propertyId: property.id, urlId: ical.id })}
+                                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Add new iCal URL */}
+                        {addingIcalTo === property.id ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              placeholder="Nome (es. Booking.com, Airbnb)"
+                              value={newIcalUrl.name}
+                              onChange={(e) => setNewIcalUrl({ ...newIcalUrl, name: e.target.value })}
+                              className="w-full px-3 py-2 border-2 border-green-300 rounded-lg text-sm"
+                            />
+                            <input
+                              type="url"
+                              placeholder="URL iCal (https://...)"
+                              value={newIcalUrl.url}
+                              onChange={(e) => setNewIcalUrl({ ...newIcalUrl, url: e.target.value })}
+                              className="w-full px-3 py-2 border-2 border-green-300 rounded-lg text-sm"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setAddingIcalTo(null);
+                                  setNewIcalUrl({ name: '', url: '' });
+                                }}
+                              >
+                                Annulla
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => addIcalUrlMutation.mutate({
+                                  propertyId: property.id,
+                                  data: newIcalUrl
+                                })}
+                                disabled={!newIcalUrl.name || !newIcalUrl.url || addIcalUrlMutation.isPending}
+                              >
+                                {addIcalUrlMutation.isPending ? 'Aggiunta...' : 'Aggiungi'}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            onClick={() => setAddingIcalTo(property.id)}
+                            className="w-full sm:w-auto"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Aggiungi Calendario Esterno
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Sync Button */}
+                      {property.iCalUrls?.length > 0 && (
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                          <div>
+                            <p className="font-medium text-gray-900">Sincronizza ora</p>
+                            <p className="text-sm text-gray-500">
+                              {property.iCalLastSync
+                                ? `Ultima sync: ${new Date(property.iCalLastSync).toLocaleString('it-IT')}`
+                                : 'Mai sincronizzato'}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => syncIcalMutation.mutate(property.id)}
+                            disabled={syncIcalMutation.isPending}
+                          >
+                            <RefreshCw className={`w-4 h-4 mr-2 ${syncIcalMutation.isPending ? 'animate-spin' : ''}`} />
+                            {syncIcalMutation.isPending ? 'Sincronizzazione...' : 'Sincronizza'}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   )}
