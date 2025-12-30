@@ -1,5 +1,6 @@
 import prisma from '../config/database.js';
 import { PDFParse } from 'pdf-parse';
+import crypto from 'crypto';
 
 // Parse Booking.com PDF and extract booking data
 function parseBookingComPDF(text) {
@@ -235,7 +236,7 @@ export const importBookingFromPDF = async (req, res, next) => {
     }
 
     // Find Booking.com channel
-    const channel = await prisma.channel.findFirst({
+    const channel = await prisma.bookingChannel.findFirst({
       where: {
         userId: req.userId,
         name: { contains: 'Booking', mode: 'insensitive' },
@@ -246,6 +247,10 @@ export const importBookingFromPDF = async (req, res, next) => {
     const checkIn = new Date(parsedData.checkIn);
     const checkOut = new Date(parsedData.checkOut);
     const nights = parsedData.nights || Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+
+    // Generate check-in token
+    const checkInToken = crypto.randomBytes(24).toString('hex');
+    const checkInTokenExp = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     // Create booking
     const booking = await prisma.booking.create({
@@ -266,6 +271,8 @@ export const importBookingFromPDF = async (req, res, next) => {
         status: 'CONFIRMED',
         iCalSource: parsedData.source || 'PDF Import',
         notes: `Booking #${parsedData.bookingNumber || 'N/A'}\nArrivo: ${parsedData.arrivalTime || 'Non specificato'}\nPaese: ${parsedData.country || 'Non specificato'}`,
+        checkInToken,
+        checkInTokenExp,
       },
       include: {
         property: true,
@@ -273,9 +280,16 @@ export const importBookingFromPDF = async (req, res, next) => {
       },
     });
 
+    // Build check-in URL
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const baseUrl = process.env.FRONTEND_URL || `${protocol}://${host}`;
+    const checkInUrl = `${baseUrl}/guest-checkin/${checkInToken}`;
+
     res.json({
       success: true,
       booking,
+      checkInUrl,
     });
   } catch (error) {
     console.error('Import booking error:', error);
