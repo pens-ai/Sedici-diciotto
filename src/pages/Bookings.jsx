@@ -986,51 +986,92 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
         />
 
         {/* Template & Products Section */}
-        <div className="border rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4 bg-gray-50">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <h4 className="font-medium text-gray-700 flex items-center gap-2 text-sm">
-              <Package className="w-4 h-4 sm:w-5 sm:h-5" />
-              Costi Variabili (Prodotti)
+        <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-primary-50 to-primary-100 px-4 py-3 border-b border-primary-200">
+            <h4 className="font-semibold text-primary-800 flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Costi Prodotti
             </h4>
-            {availableTemplates.length > 0 && (
-              <Select
-                value={selectedTemplateId}
-                onChange={(e) => handleTemplateChange(e.target.value)}
-                className="w-full sm:w-48 text-sm"
-              >
-                <option value="">Seleziona Template</option>
-                {availableTemplates.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.minGuests}-{t.maxGuests} ospiti)
-                  </option>
-                ))}
-                {selectedTemplateId === 'custom' && (
-                  <option value="custom">Personalizzato</option>
-                )}
-              </Select>
-            )}
           </div>
+
+          <div className="p-4 space-y-4">
+            {/* Template Selection - Card Style */}
+            {availableTemplates.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Applica un template
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {availableTemplates.map(t => {
+                    const isSelected = selectedTemplateId === t.id;
+                    const templateCost = t.products?.reduce((sum, tp) =>
+                      sum + (tp.product?.price || 0) * tp.quantity, 0) || 0;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => handleTemplateChange(isSelected ? '' : t.id)}
+                        className={`p-3 rounded-xl border-2 text-left transition-all ${
+                          isSelected
+                            ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200'
+                            : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-medium text-gray-900 text-sm truncate">{t.name}</div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-gray-500">{t.minGuests}-{t.maxGuests} ospiti</span>
+                          <span className={`text-xs font-semibold ${isSelected ? 'text-primary-600' : 'text-gray-600'}`}>
+                            €{templateCost.toFixed(0)}
+                          </span>
+                        </div>
+                        {isSelected && (
+                          <div className="mt-2 flex items-center justify-center">
+                            <span className="text-xs bg-primary-500 text-white px-2 py-0.5 rounded-full">
+                              Applicato
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Divider with "or" */}
+            {availableTemplates.length > 0 && (
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="px-3 bg-white text-sm text-gray-500">oppure aggiungi singoli prodotti</span>
+                </div>
+              </div>
+            )}
 
             {/* Product search */}
             <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Cerca e aggiungi prodotti..."
+                placeholder="Cerca prodotto da aggiungere..."
                 value={productSearchTerm}
                 onChange={(e) => setProductSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
               />
               {filteredProducts.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-auto">
+                <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-48 overflow-auto">
                   {filteredProducts.slice(0, 10).map(product => (
                     <button
                       key={product.id}
                       type="button"
                       onClick={() => handleAddProduct(product)}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
+                      className="w-full px-4 py-3 text-left hover:bg-primary-50 flex items-center justify-between border-b border-gray-100 last:border-0"
                     >
-                      <span>{product.name}</span>
-                      <span className="text-sm text-gray-500">
+                      <span className="font-medium text-gray-900">{product.name}</span>
+                      <span className="text-sm text-primary-600 font-medium">
                         €{parseFloat(product.price).toFixed(2)}/{product.unit}
                       </span>
                     </button>
@@ -1041,54 +1082,84 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
 
             {/* Selected products */}
             {selectedProducts.length === 0 ? (
-              <div className="text-center py-4 text-gray-500 text-sm">
-                {availableTemplates.length > 0
-                  ? 'Seleziona un template o cerca prodotti da aggiungere'
-                  : 'Cerca prodotti da aggiungere'
-                }
+              <div className="text-center py-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">
+                  {availableTemplates.length > 0
+                    ? 'Seleziona un template o cerca prodotti'
+                    : 'Cerca prodotti da aggiungere'
+                  }
+                </p>
               </div>
             ) : (
-              <div className="space-y-2 max-h-48 overflow-auto">
-                {selectedProducts.map(p => (
-                  <div key={p.productId} className="flex items-center gap-3 p-2 bg-white rounded border">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">{p.product?.name}</p>
-                      <p className="text-xs text-gray-500">
-                        €{parseFloat(p.product?.price || 0).toFixed(2)}/{p.product?.unit}
-                      </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    Prodotti selezionati ({selectedProducts.length})
+                  </span>
+                  {selectedTemplateId && selectedTemplateId !== 'custom' && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                      da template
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2 max-h-52 overflow-auto pr-1">
+                  {selectedProducts.map(p => (
+                    <div key={p.productId} className="flex items-center gap-3 p-3 bg-white rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm">{p.product?.name}</p>
+                        <p className="text-xs text-gray-500">
+                          €{parseFloat(p.product?.price || 0).toFixed(2)} / {p.product?.unit}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(p.productId, Math.max(1, p.quantity - 1))}
+                          className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 font-bold"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={Math.round(p.quantity)}
+                          onChange={(e) => handleQuantityChange(p.productId, e.target.value)}
+                          className="w-14 px-2 py-1.5 text-center border-2 border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(p.productId, p.quantity + 1)}
+                          className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 font-bold"
+                        >
+                          +
+                        </button>
+                        <span className="text-sm font-semibold text-gray-700 w-16 text-right">
+                          €{(p.quantity * (p.product?.price || 0)).toFixed(2)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProduct(p.productId)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={Math.round(p.quantity)}
-                        onChange={(e) => handleQuantityChange(p.productId, e.target.value)}
-                        className="w-16 px-2 py-1 text-center border border-gray-300 rounded text-sm"
-                      />
-                      <span className="text-xs text-gray-500 w-14 text-right">
-                        €{(p.quantity * (p.product?.price || 0)).toFixed(2)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveProduct(p.productId)}
-                        className="p-1 text-red-500 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Variable costs total */}
-          {selectedProducts.length > 0 && (
-            <div className="flex items-center justify-between p-2 bg-white rounded border">
-              <span className="font-medium text-gray-700">Totale Costi Variabili:</span>
-              <span className="font-bold text-red-600">€{variableCosts.toFixed(2)}</span>
-            </div>
-          )}
+            {selectedProducts.length > 0 && (
+              <div className="flex items-center justify-between p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border-2 border-red-100">
+                <span className="font-semibold text-gray-700">Totale Costi Prodotti:</span>
+                <span className="text-xl font-bold text-red-600">€{variableCosts.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Financial summary */}
