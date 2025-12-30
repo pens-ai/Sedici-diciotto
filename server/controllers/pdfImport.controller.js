@@ -3,54 +3,56 @@ import { createRequire } from 'module';
 
 // pdf-parse is CommonJS only, use createRequire
 const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse/lib/pdf-parse.js');
+const pdfParseModule = require('pdf-parse');
+// Handle both default export and direct function export
+const pdfParse = pdfParseModule.default || pdfParseModule;
 
 // Parse Booking.com PDF and extract booking data
 function parseBookingComPDF(text) {
   const data = {};
 
-  // Booking number
-  const bookingMatch = text.match(/Booking number:\s*(\d+)/i);
+  // Booking number - value on next line
+  const bookingMatch = text.match(/Booking number:\s*\n?(\d+)/i);
   if (bookingMatch) data.bookingNumber = bookingMatch[1];
 
   // Guest name - look for line after "Guest information:"
-  const guestMatch = text.match(/Guest information:\s*\n?([^\n]+)/i);
+  const guestMatch = text.match(/Guest information:\s*\n([^\n]+)/i);
   if (guestMatch) data.guestName = guestMatch[1].trim();
 
-  // Country
-  const countryMatch = text.match(/Guest information:\s*\n?[^\n]+\n([A-Za-z]+)\n/i);
+  // Country - line after guest name
+  const countryMatch = text.match(/Guest information:\s*\n[^\n]+\n([A-Za-z]+)/i);
   if (countryMatch) data.country = countryMatch[1].trim();
 
-  // Total guests - extract number
+  // Total guests - extract number, value might be on next line
   const guestsMatch = text.match(/Total guests:\s*\n?(\d+)\s*adult/i);
   if (guestsMatch) data.numberOfGuests = parseInt(guestsMatch[1]);
 
-  // Check-in date
-  const checkinMatch = text.match(/Check-in:\s*\n?(?:[A-Za-z]+\s+)?(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
+  // Check-in date - handles "Check-in:\nWednesday\n1 May 2026" format
+  const checkinMatch = text.match(/Check-in:\s*\n(?:[A-Za-z]+\n)?(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
   if (checkinMatch) data.checkIn = parseBookingDate(checkinMatch[1]);
 
-  // Check-out date
-  const checkoutMatch = text.match(/Check-out:\s*\n?(?:[A-Za-z]+\s+)?(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
+  // Check-out date - handles "Check-out:\nFriday\n3 May 2026" format
+  const checkoutMatch = text.match(/Check-out:\s*\n(?:[A-Za-z]+\n)?(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
   if (checkoutMatch) data.checkOut = parseBookingDate(checkoutMatch[1]);
 
-  // Length of stay
+  // Length of stay - value on next line
   const nightsMatch = text.match(/Length of stay:\s*\n?(\d+)\s*night/i);
   if (nightsMatch) data.nights = parseInt(nightsMatch[1]);
 
-  // Total price
-  const priceMatch = text.match(/Total price:\s*\n?[€$£]?\s*([\d,.]+)/i);
+  // Total price - handles "Total price:\n€ 340.00" or "€340.00"
+  const priceMatch = text.match(/Total price:\s*\n?€?\s*([\d,.]+)/i);
   if (priceMatch) data.grossRevenue = parseFloat(priceMatch[1].replace(',', '.'));
 
-  // Commission
-  const commissionMatch = text.match(/Commission:\s*\n?[€$£]?\s*([\d,.]+)/i);
+  // Commission - handles "Commission:\n€ 51.00"
+  const commissionMatch = text.match(/Commission:\s*\n?€?\s*([\d,.]+)/i);
   if (commissionMatch) data.commissionAmount = parseFloat(commissionMatch[1].replace(',', '.'));
 
   // Commissionable amount
-  const commissionableMatch = text.match(/Commissionable amount:\s*\n?[€$£]?\s*([\d,.]+)/i);
+  const commissionableMatch = text.match(/Commissionable amount:\s*\n?€?\s*([\d,.]+)/i);
   if (commissionableMatch) data.commissionableAmount = parseFloat(commissionableMatch[1].replace(',', '.'));
 
   // Property name (usually appears before "Breakfast" or rate details)
-  const propertyMatch = text.match(/€\s*\d+\n\n([A-Za-z0-9\s]+)\n(?:Breakfast|Standard|[A-Z])/);
+  const propertyMatch = text.match(/€\s*[\d,.]+\s*\n\n([A-Za-z0-9\s]+)\n(?:Breakfast|Standard|[A-Z])/);
   if (propertyMatch) data.propertyName = propertyMatch[1].trim();
 
   // Arrival time
