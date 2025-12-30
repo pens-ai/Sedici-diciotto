@@ -1,14 +1,9 @@
 import prisma from '../config/database.js';
+import { createRequire } from 'module';
 
-// pdf-parse doesn't support ESM, use dynamic import
-let pdfParse = null;
-const getPdfParser = async () => {
-  if (!pdfParse) {
-    const module = await import('pdf-parse');
-    pdfParse = module.default || module;
-  }
-  return pdfParse;
-};
+// pdf-parse is CommonJS only, use createRequire
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse/lib/pdf-parse.js');
 
 // Parse Booking.com PDF and extract booking data
 function parseBookingComPDF(text) {
@@ -122,8 +117,7 @@ export const parsePDF = async (req, res, next) => {
     }
 
     const pdfBuffer = req.file.buffer;
-    const pdf = await getPdfParser();
-    const pdfData = await pdf(pdfBuffer);
+    const pdfData = await pdfParse(pdfBuffer);
     const text = pdfData.text;
 
     // Detect PDF source and parse accordingly
