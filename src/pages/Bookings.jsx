@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, Search, Calendar, Filter, Eye,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Package, Upload, X,
-  Sparkles, FileText
+  Sparkles, FileText, FileUp, AlertCircle
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -36,8 +36,12 @@ export const Bookings = () => {
   const [dayBookingsPopup, setDayBookingsPopup] = useState(null); // { day, bookings }
   const [newBookingDate, setNewBookingDate] = useState(null); // Pre-fill date when creating from calendar
   const [showChatbotBooking, setShowChatbotBooking] = useState(false);
+  const [showPDFImportModal, setShowPDFImportModal] = useState(false);
+  const [pdfParsedData, setPdfParsedData] = useState(null);
+  const [isPDFParsing, setIsPDFParsing] = useState(false);
 
   const fileInputRef = useRef(null);
+  const pdfInputRef = useRef(null);
 
   // Property colors for calendar
   const PROPERTY_COLORS = [
@@ -173,6 +177,47 @@ export const Bookings = () => {
     }
   };
 
+  // Handle PDF import
+  const handlePDFFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsPDFParsing(true);
+    setPdfParsedData(null);
+
+    try {
+      const result = await bookingsApi.parsePDF(file);
+      if (result.success && result.data) {
+        setPdfParsedData(result.data);
+        setShowPDFImportModal(true);
+      } else {
+        toast.error('Impossibile estrarre i dati dal PDF');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Errore durante l\'analisi del PDF');
+    } finally {
+      setIsPDFParsing(false);
+      if (pdfInputRef.current) {
+        pdfInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Confirm PDF import
+  const handleConfirmPDFImport = async (propertyId) => {
+    if (!pdfParsedData || !propertyId) return;
+
+    try {
+      await bookingsApi.importBookingFromPDF(propertyId, pdfParsedData);
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      toast.success('Prenotazione importata con successo!');
+      setShowPDFImportModal(false);
+      setPdfParsedData(null);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Errore durante l\'importazione');
+    }
+  };
+
   // Filter bookings
   const filteredBookings = bookings.filter(b => {
     if (searchTerm) {
@@ -243,6 +288,22 @@ export const Bookings = () => {
             type="file"
             accept=".xls,.xlsx"
             onChange={handleImportFile}
+            className="hidden"
+          />
+          <Button
+            variant="secondary"
+            onClick={() => pdfInputRef.current?.click()}
+            disabled={isPDFParsing}
+            className="text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 border-0"
+          >
+            <FileUp className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">{isPDFParsing ? 'Analizzando...' : 'Import PDF'}</span>
+          </Button>
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept=".pdf"
+            onChange={handlePDFFile}
             className="hidden"
           />
           <Button
@@ -738,6 +799,18 @@ export const Bookings = () => {
           });
         }}
         isLoading={createMutation.isPending}
+      />
+
+      {/* PDF Import Modal */}
+      <PDFImportModal
+        isOpen={showPDFImportModal}
+        onClose={() => {
+          setShowPDFImportModal(false);
+          setPdfParsedData(null);
+        }}
+        parsedData={pdfParsedData}
+        properties={properties}
+        onConfirm={handleConfirmPDFImport}
       />
     </div>
   );
@@ -1322,6 +1395,182 @@ function BookingDetailsModal({ isOpen, onClose, booking, onStatusChange }) {
               </Button>
             )}
           </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function PDFImportModal({ isOpen, onClose, parsedData, properties, onConfirm }) {
+  const [selectedPropertyId, setSelectedPropertyId] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && properties.length > 0) {
+      // Try to match property by name from PDF
+      if (parsedData?.propertyName) {
+        const match = properties.find(p =>
+          p.name.toLowerCase().includes(parsedData.propertyName.toLowerCase()) ||
+          parsedData.propertyName.toLowerCase().includes(p.name.toLowerCase())
+        );
+        if (match) {
+          setSelectedPropertyId(match.id);
+          return;
+        }
+      }
+      setSelectedPropertyId(properties[0]?.id || '');
+    }
+  }, [isOpen, properties, parsedData]);
+
+  const handleConfirm = async () => {
+    if (!selectedPropertyId) {
+      toast.error('Seleziona una proprietà');
+      return;
+    }
+    setIsImporting(true);
+    try {
+      await onConfirm(selectedPropertyId);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  if (!parsedData) return null;
+
+  const formatDate = (date) => {
+    if (!date) return 'N/D';
+    try {
+      return format(new Date(date), 'dd MMMM yyyy', { locale: it });
+    } catch {
+      return 'Data non valida';
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Import da PDF Booking.com" size="lg">
+      <div className="space-y-6">
+        {/* Source badge */}
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="font-semibold text-blue-900">{parsedData.source || 'PDF Import'}</p>
+            {parsedData.bookingNumber && (
+              <p className="text-sm text-blue-700">Prenotazione #{parsedData.bookingNumber}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Property selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Assegna a questa proprietà *
+          </label>
+          <Select
+            value={selectedPropertyId}
+            onChange={(e) => setSelectedPropertyId(e.target.value)}
+            required
+          >
+            <option value="">Seleziona proprietà</option>
+            {properties.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </Select>
+          {parsedData.propertyName && (
+            <p className="text-xs text-gray-500 mt-1">
+              Nome nel PDF: "{parsedData.propertyName}"
+            </p>
+          )}
+        </div>
+
+        {/* Parsed data preview */}
+        <div className="bg-gray-50 rounded-xl p-5 space-y-4">
+          <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-green-500" />
+            Dati estratti dal PDF
+          </h4>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Ospite</p>
+              <p className="font-semibold text-gray-900">{parsedData.guestName || 'N/D'}</p>
+              {parsedData.country && (
+                <p className="text-sm text-gray-600">{parsedData.country}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Numero ospiti</p>
+              <p className="font-semibold text-gray-900">{parsedData.numberOfGuests || 1}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg p-3 border">
+              <p className="text-sm text-gray-500">Check-in</p>
+              <p className="font-semibold text-gray-900">{formatDate(parsedData.checkIn)}</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 border">
+              <p className="text-sm text-gray-500">Check-out</p>
+              <p className="font-semibold text-gray-900">{formatDate(parsedData.checkOut)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Notti</p>
+              <p className="font-semibold text-gray-900">{parsedData.nights || 'N/D'}</p>
+            </div>
+            {parsedData.arrivalTime && (
+              <div className="col-span-2">
+                <p className="text-sm text-gray-500">Orario arrivo</p>
+                <p className="font-semibold text-gray-900">{parsedData.arrivalTime}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Financial summary */}
+          <div className="border-t pt-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Totale incassato</span>
+              <span className="font-bold text-lg">€{parsedData.grossRevenue?.toFixed(2) || '0.00'}</span>
+            </div>
+            {parsedData.commissionAmount > 0 && (
+              <div className="flex justify-between items-center text-red-600">
+                <span>Commissione ({parsedData.commissionRate?.toFixed(1) || 0}%)</span>
+                <span>-€{parsedData.commissionAmount?.toFixed(2)}</span>
+              </div>
+            )}
+            {parsedData.netRevenue > 0 && (
+              <div className="flex justify-between items-center font-semibold text-green-600 border-t pt-2">
+                <span>Netto</span>
+                <span>€{parsedData.netRevenue?.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Warning */}
+        <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-yellow-800">
+            <p className="font-medium">Verifica i dati prima di importare</p>
+            <p>I dati sono stati estratti automaticamente. Controlla che siano corretti prima di confermare.</p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
+          <Button type="button" variant="secondary" onClick={onClose} fullWidth>
+            Annulla
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            fullWidth
+            disabled={!selectedPropertyId || isImporting}
+          >
+            {isImporting ? 'Importazione...' : 'Importa Prenotazione'}
+          </Button>
         </div>
       </div>
     </Modal>

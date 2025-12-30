@@ -85,3 +85,17 @@ export const importBookings = async (file) => {
   const response = await api.post('/bookings/import', formData);
   return response.data;
 };
+
+// Parse PDF for booking data (Booking.com, etc.)
+export const parsePDF = async (file) => {
+  const formData = new FormData();
+  formData.append('pdf', file);
+  const response = await api.post('/pdf-import/parse', formData);
+  return response.data;
+};
+
+// Import booking from parsed PDF data
+export const importBookingFromPDF = async (propertyId, parsedData) => {
+  const response = await api.post('/pdf-import/import', { propertyId, parsedData });
+  return response.data;
+};

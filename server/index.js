@@ -19,6 +19,7 @@ import settingsRoutes from './routes/settings.routes.js';
 import checkinRoutes from './routes/checkin.routes.js';
 import icalRoutes from './routes/ical.routes.js';
 import templatesRoutes from './routes/templates.routes.js';
+import pdfImportRoutes from './routes/pdfImport.routes.js';
 import { startIcalSyncJob } from './jobs/icalSync.job.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -91,6 +92,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/checkin', checkinRoutes);
 app.use('/api/ical', icalRoutes);
 app.use('/api/templates', templatesRoutes);
+app.use('/api/pdf-import', pdfImportRoutes);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
