@@ -7,6 +7,7 @@ import {
   removeICalUrl,
   syncICalendar,
   getICalSettings,
+  getCalendarBlocks,
 } from '../controllers/ical.controller.js';
 
 const router = Router();
@@ -15,6 +16,7 @@ const router = Router();
 router.get('/export/:token', exportICalendar);
 
 // Protected routes - require authentication
+router.get('/blocks', authenticate, getCalendarBlocks);
 router.get('/settings/:propertyId', authenticate, getICalSettings);
 router.post('/generate-token/:propertyId', authenticate, generateICalToken);
 router.post('/add-url/:propertyId', authenticate, addICalUrl);

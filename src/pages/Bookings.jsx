@@ -89,6 +89,11 @@ export const Bookings = () => {
     queryFn: templatesApi.getTemplates,
   });
 
+  const { data: calendarBlocks = [] } = useQuery({
+    queryKey: ['calendarBlocks'],
+    queryFn: bookingsApi.getCalendarBlocks,
+  });
+
   const bookings = bookingsData?.data || [];
   const properties = propertiesData?.data || [];
   const products = productsData?.data || productsData || [];
@@ -240,6 +245,14 @@ export const Bookings = () => {
       const checkIn = parseISO(b.checkIn);
       const checkOut = parseISO(b.checkOut);
       return day >= checkIn && day < checkOut;
+    });
+  };
+
+  const getBlocksForDay = (day) => {
+    return calendarBlocks.filter(block => {
+      const start = new Date(block.startDate);
+      const end = new Date(block.endDate);
+      return day >= start && day < end;
     });
   };
 
@@ -620,6 +633,10 @@ export const Bookings = () => {
                 <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div>
                 <span className="text-xs font-medium">Cancellata</span>
               </div>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-gray-200 text-gray-600">
+                <div className="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
+                <span className="text-xs font-medium line-through">Blocco iCal</span>
+              </div>
             </div>
           )}
 
@@ -631,12 +648,14 @@ export const Bookings = () => {
             ))}
             {days.map(day => {
               const dayBookings = getBookingsForDay(day);
+              const dayBlocks = getBlocksForDay(day);
               const handleDayClick = (e) => {
                 // Always open the day popup when clicking on the day
                 if (e.target === e.currentTarget || e.target.classList.contains('day-number')) {
-                  setDayBookingsPopup({ day, bookings: dayBookings });
+                  setDayBookingsPopup({ day, bookings: dayBookings, blocks: dayBlocks });
                 }
               };
+              const totalItems = dayBookings.length + dayBlocks.length;
               return (
                 <div
                   key={day.toISOString()}
@@ -648,6 +667,7 @@ export const Bookings = () => {
                   <div className="day-number text-sm font-semibold text-gray-700 mb-1.5">
                     {format(day, 'd')}
                   </div>
+                  {/* Show bookings first */}
                   {dayBookings.slice(0, 2).map(b => {
                     const propColor = getPropertyColor(b.propertyId);
                     return (
@@ -667,15 +687,25 @@ export const Bookings = () => {
                       </div>
                     );
                   })}
-                  {dayBookings.length > 2 && (
+                  {/* Show blocks (iCal) if space available */}
+                  {dayBookings.length < 2 && dayBlocks.slice(0, 2 - dayBookings.length).map(block => (
+                    <div
+                      key={block.id}
+                      className="text-xs rounded-md px-1.5 py-1 truncate mb-1 font-medium border bg-gray-200 text-gray-600 border-gray-300 line-through"
+                      title={`${block.source}: ${block.title}`}
+                    >
+                      {block.source}
+                    </div>
+                  ))}
+                  {totalItems > 2 && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setDayBookingsPopup({ day, bookings: dayBookings });
+                        setDayBookingsPopup({ day, bookings: dayBookings, blocks: dayBlocks });
                       }}
                       className="text-xs text-primary-600 hover:text-primary-800 font-semibold cursor-pointer"
                     >
-                      +{dayBookings.length - 2} altri
+                      +{totalItems - 2} altri
                     </button>
                   )}
                 </div>
@@ -740,8 +770,9 @@ export const Bookings = () => {
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
-              {dayBookingsPopup.bookings.length > 0 ? (
+              {(dayBookingsPopup.bookings.length > 0 || dayBookingsPopup.blocks?.length > 0) ? (
                 <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
+                  {/* Prenotazioni */}
                   {dayBookingsPopup.bookings.map(b => {
                     const statusConfig = STATUS_CONFIG[b.status] || STATUS_CONFIG.CONFIRMED;
                     return (
@@ -765,6 +796,26 @@ export const Bookings = () => {
                       </div>
                     );
                   })}
+                  {/* Blocchi calendario (iCal) */}
+                  {dayBookingsPopup.blocks?.map(block => (
+                    <div
+                      key={block.id}
+                      className="p-3 border border-gray-300 rounded-lg bg-gray-100"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-gray-600 truncate line-through">{block.title}</div>
+                          <div className="text-sm text-gray-500 truncate">{block.property?.name}</div>
+                        </div>
+                        <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                          {block.source}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Blocco da iCal - carica il PDF per creare la prenotazione
+                      </p>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-4 mb-4">

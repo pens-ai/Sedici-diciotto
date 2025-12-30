@@ -163,6 +163,8 @@ export const removeICalUrl = async (req, res, next) => {
 };
 
 // ============ SYNC ICAL (IMPORT FROM EXTERNAL) ============
+// Creates CalendarBlocks to show availability, NOT Bookings
+// Host will then upload PDFs to create actual bookings with financial data
 
 export const syncICalendar = async (req, res, next) => {
   try {
@@ -170,13 +172,6 @@ export const syncICalendar = async (req, res, next) => {
 
     const property = await prisma.property.findFirst({
       where: { id: propertyId, userId: req.userId },
-      include: {
-        user: {
-          include: {
-            channels: true,
-          },
-        },
-      },
     });
 
     if (!property) {
@@ -190,7 +185,7 @@ export const syncICalendar = async (req, res, next) => {
     }
 
     let imported = 0;
-    let skipped = 0;
+    let updated = 0;
     let errors = [];
 
     for (const calendarSource of iCalUrls) {
@@ -211,81 +206,46 @@ export const syncICalendar = async (req, res, next) => {
           // Skip past events (ended more than 7 days ago)
           if (end < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) continue;
 
-          // Check if booking already exists
-          const existing = await prisma.booking.findFirst({
+          // Check if block already exists
+          const existing = await prisma.calendarBlock.findFirst({
             where: {
               propertyId: property.id,
               iCalUid: uid,
             },
           });
 
+          const title = event.summary || 'Blocco esterno';
+          const notes = event.description || null;
+
           if (existing) {
-            // Update dates if changed
-            if (existing.checkIn.getTime() !== start.getTime() ||
-                existing.checkOut.getTime() !== end.getTime()) {
-              const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-              await prisma.booking.update({
+            // Update if dates changed
+            if (existing.startDate.getTime() !== start.getTime() ||
+                existing.endDate.getTime() !== end.getTime() ||
+                existing.title !== title) {
+              await prisma.calendarBlock.update({
                 where: { id: existing.id },
                 data: {
-                  checkIn: start,
-                  checkOut: end,
-                  nights,
+                  startDate: start,
+                  endDate: end,
+                  title,
+                  notes,
                 },
               });
-              imported++;
-            } else {
-              skipped++;
+              updated++;
             }
             continue;
           }
 
-          // Calculate nights
-          const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-
-          // Extract guest name from summary
-          const summary = event.summary || 'Prenotazione esterna';
-          let guestName = summary;
-
-          // Try to clean up common iCal summary formats
-          if (summary.includes(' - ')) {
-            guestName = summary.split(' - ')[0];
-          } else if (summary.toLowerCase().includes('reserved') ||
-                     summary.toLowerCase().includes('blocked') ||
-                     summary.toLowerCase().includes('not available')) {
-            guestName = 'Blocco calendario';
-          }
-
-          // Find or guess the channel
-          let channelId = null;
-          const sourceLower = calendarSource.name.toLowerCase();
-          const channel = property.user.channels.find(c =>
-            sourceLower.includes(c.name.toLowerCase()) ||
-            c.name.toLowerCase().includes(sourceLower)
-          );
-          if (channel) {
-            channelId = channel.id;
-          }
-
-          // Create new booking
-          await prisma.booking.create({
+          // Create new calendar block
+          await prisma.calendarBlock.create({
             data: {
-              userId: property.userId,
               propertyId: property.id,
-              channelId,
-              guestName,
-              checkIn: start,
-              checkOut: end,
-              nights,
-              numberOfGuests: 1, // Default, not available in iCal
               iCalUid: uid,
-              iCalSource: calendarSource.name,
-              grossRevenue: 0, // Not available in iCal
-              commissionRate: channel?.commissionRate || 0,
-              commissionAmount: 0,
-              netRevenue: 0,
-              netMargin: 0,
-              status: 'CONFIRMED',
-              notes: event.description || null,
+              source: calendarSource.name,
+              startDate: start,
+              endDate: end,
+              title,
+              notes,
             },
           });
 
@@ -304,10 +264,55 @@ export const syncICalendar = async (req, res, next) => {
 
     res.json({
       imported,
-      skipped,
+      updated,
       errors: errors.length > 0 ? errors : undefined,
       lastSync: new Date(),
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============ GET CALENDAR BLOCKS ============
+
+export const getCalendarBlocks = async (req, res, next) => {
+  try {
+    const { propertyId } = req.query;
+
+    const where = {};
+
+    if (propertyId) {
+      // Verify property belongs to user
+      const property = await prisma.property.findFirst({
+        where: { id: propertyId, userId: req.userId },
+      });
+      if (!property) {
+        return res.status(404).json({ error: 'Proprietà non trovata' });
+      }
+      where.propertyId = propertyId;
+    } else {
+      // Get all properties for user
+      const userProperties = await prisma.property.findMany({
+        where: { userId: req.userId },
+        select: { id: true },
+      });
+      where.propertyId = { in: userProperties.map(p => p.id) };
+    }
+
+    // Only get blocks ending in the future (or last 7 days)
+    where.endDate = { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) };
+
+    const blocks = await prisma.calendarBlock.findMany({
+      where,
+      include: {
+        property: {
+          select: { id: true, name: true },
+        },
+      },
+      orderBy: { startDate: 'asc' },
+    });
+
+    res.json(blocks);
   } catch (error) {
     next(error);
   }

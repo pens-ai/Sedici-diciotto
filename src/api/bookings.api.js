@@ -99,3 +99,9 @@ export const importBookingFromPDF = async (propertyId, parsedData) => {
   const response = await api.post('/pdf-import/import', { propertyId, parsedData });
   return response.data;
 };
+
+// Get calendar blocks from iCal sync
+export const getCalendarBlocks = async (params = {}) => {
+  const response = await api.get('/ical/blocks', { params });
+  return response.data;
+};

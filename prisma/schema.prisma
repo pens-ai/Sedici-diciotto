@@ -90,9 +90,10 @@ model Property {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
-  images     PropertyImage[]
-  bookings   Booking[]
-  fixedCosts FixedCost[]
+  images         PropertyImage[]
+  bookings       Booking[]
+  fixedCosts     FixedCost[]
+  calendarBlocks CalendarBlock[]
 
   @@index([userId])
   @@index([name])
@@ -352,6 +353,31 @@ model FixedCost {
   @@index([userId])
   @@index([propertyId])
   @@index([categoryId])
+}
+
+// ============ CALENDAR BLOCKS (from iCal sync) ============
+
+model CalendarBlock {
+  id         String   @id @default(uuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  iCalUid    String   // UID from iCal event (to prevent duplicates)
+  source     String   // Source name (e.g., "Airbnb", "Booking.com")
+
+  startDate  DateTime
+  endDate    DateTime
+
+  title      String?  // Event summary/title from iCal
+  notes      String?  // Event description from iCal
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([propertyId, iCalUid])
+  @@index([propertyId])
+  @@index([startDate])
+  @@index([endDate])
 }
 
 // ============ NOTIFICATIONS ============
