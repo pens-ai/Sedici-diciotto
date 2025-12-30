@@ -13,6 +13,7 @@ import { Bookings } from './pages/Bookings';
 import { Guests } from './pages/Guests';
 import { FixedCosts } from './pages/FixedCosts';
 import { Settings } from './pages/Settings';
+import { Templates } from './pages/Templates';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -146,6 +147,16 @@ function App() {
                   <ProtectedRoute>
                     <AppLayout>
                       <FixedCosts />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/templates"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Templates />
                     </AppLayout>
                   </ProtectedRoute>
                 }

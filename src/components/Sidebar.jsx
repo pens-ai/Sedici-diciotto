@@ -11,7 +11,8 @@ import {
   User,
   Users,
   Menu,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -105,6 +106,7 @@ export const Sidebar = ({ isOpen, onToggle }) => {
           <NavItem to="/properties" icon={Home} onClick={closeSidebar}>Case</NavItem>
           <NavItem to="/guests" icon={Users} onClick={closeSidebar}>Ospiti</NavItem>
           <NavItem to="/products" icon={Package} onClick={closeSidebar}>Prodotti</NavItem>
+          <NavItem to="/templates" icon={FileText} onClick={closeSidebar}>Template</NavItem>
           <NavItem to="/costs" icon={DollarSign} onClick={closeSidebar}>Costi Fissi</NavItem>
         </nav>
 

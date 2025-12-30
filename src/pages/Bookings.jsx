@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import * as bookingsApi from '../api/bookings.api';
 import * as propertiesApi from '../api/properties.api';
 import * as productsApi from '../api/products.api';
+import * as templatesApi from '../api/templates.api';
 import Button from '../components/Button';
 import { Input, Select } from '../components/Input';
 import { Modal } from '../components/Modal';
@@ -79,9 +80,15 @@ export const Bookings = () => {
     queryFn: () => productsApi.getProducts(),
   });
 
+  const { data: templatesData } = useQuery({
+    queryKey: ['templates'],
+    queryFn: templatesApi.getTemplates,
+  });
+
   const bookings = bookingsData?.data || [];
   const properties = propertiesData?.data || [];
   const products = productsData?.data || productsData || [];
+  const templates = templatesData || [];
 
   // Mutations
   const createMutation = useMutation({
@@ -630,6 +637,7 @@ export const Bookings = () => {
         properties={properties}
         channels={channels}
         products={products}
+        templates={templates}
         onSave={(data) => {
           if (editingBooking) {
             updateMutation.mutate({ id: editingBooking.id, data });
@@ -735,7 +743,7 @@ export const Bookings = () => {
   );
 };
 
-function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, channels, products, onSave, isLoading }) {
+function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, channels, products, templates = [], onSave, isLoading }) {
   const [formData, setFormData] = useState({
     propertyId: '',
     channelId: '',
@@ -753,9 +761,8 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [productSearchTerm, setProductSearchTerm] = useState('');
 
-  // Get selected property and its templates
-  const selectedProperty = properties.find(p => p.id === formData.propertyId);
-  const availableTemplates = selectedProperty?.templates || [];
+  // Global templates are available for all properties
+  const availableTemplates = templates;
 
   useEffect(() => {
     if (booking) {
@@ -892,8 +899,6 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
             value={formData.propertyId}
             onChange={(e) => {
               setFormData({ ...formData, propertyId: e.target.value });
-              setSelectedTemplateId('');
-              setSelectedProducts([]);
             }}
             required
             className="text-sm"
@@ -981,31 +986,30 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
         />
 
         {/* Template & Products Section */}
-        {formData.propertyId && (
-          <div className="border rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4 bg-gray-50">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h4 className="font-medium text-gray-700 flex items-center gap-2 text-sm">
-                <Package className="w-4 h-4 sm:w-5 sm:h-5" />
-                Costi Variabili (Prodotti)
-              </h4>
-              {availableTemplates.length > 0 && (
-                <Select
-                  value={selectedTemplateId}
-                  onChange={(e) => handleTemplateChange(e.target.value)}
-                  className="w-full sm:w-48 text-sm"
-                >
-                  <option value="">Seleziona Template</option>
-                  {availableTemplates.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.minGuests}-{t.maxGuests} ospiti)
-                    </option>
-                  ))}
-                  {selectedTemplateId === 'custom' && (
-                    <option value="custom">Personalizzato</option>
-                  )}
-                </Select>
-              )}
-            </div>
+        <div className="border rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4 bg-gray-50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h4 className="font-medium text-gray-700 flex items-center gap-2 text-sm">
+              <Package className="w-4 h-4 sm:w-5 sm:h-5" />
+              Costi Variabili (Prodotti)
+            </h4>
+            {availableTemplates.length > 0 && (
+              <Select
+                value={selectedTemplateId}
+                onChange={(e) => handleTemplateChange(e.target.value)}
+                className="w-full sm:w-48 text-sm"
+              >
+                <option value="">Seleziona Template</option>
+                {availableTemplates.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.minGuests}-{t.maxGuests} ospiti)
+                  </option>
+                ))}
+                {selectedTemplateId === 'custom' && (
+                  <option value="custom">Personalizzato</option>
+                )}
+              </Select>
+            )}
+          </div>
 
             {/* Product search */}
             <div className="relative">
@@ -1079,14 +1083,13 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
             )}
 
             {/* Variable costs total */}
-            {selectedProducts.length > 0 && (
-              <div className="flex items-center justify-between p-2 bg-white rounded border">
-                <span className="font-medium text-gray-700">Totale Costi Variabili:</span>
-                <span className="font-bold text-red-600">€{variableCosts.toFixed(2)}</span>
-              </div>
-            )}
-          </div>
-        )}
+          {selectedProducts.length > 0 && (
+            <div className="flex items-center justify-between p-2 bg-white rounded border">
+              <span className="font-medium text-gray-700">Totale Costi Variabili:</span>
+              <span className="font-bold text-red-600">€{variableCosts.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
 
         {/* Financial summary */}
         {grossRevenue > 0 && (

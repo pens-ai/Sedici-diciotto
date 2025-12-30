@@ -32,6 +32,7 @@ model User {
   fixedCosts    FixedCost[]
   channels      BookingChannel[]
   notifications Notification[]
+  templates     Template[]
 
   @@index([email])
 }
@@ -90,7 +91,6 @@ model Property {
   updatedAt    DateTime       @updatedAt
 
   images     PropertyImage[]
-  templates  Template[]
   bookings   Booking[]
   fixedCosts FixedCost[]
 
@@ -114,18 +114,18 @@ model PropertyImage {
 
 model Template {
   id          String   @id @default(uuid())
-  propertyId  String
-  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
-  minGuests   Int
-  maxGuests   Int
+  minGuests   Int      @default(1)
+  maxGuests   Int      @default(10)
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   products TemplateProduct[]
 
-  @@index([propertyId])
+  @@index([userId])
 }
 
 model TemplateProduct {
@@ -225,6 +225,7 @@ model Booking {
   property         Property        @relation(fields: [propertyId], references: [id], onDelete: Restrict)
   channelId        String?
   channel          BookingChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  templateId       String?         // Template used for this booking (reference only)
 
   guestName        String
   guestEmail       String?
