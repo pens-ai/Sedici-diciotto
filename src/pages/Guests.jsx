@@ -268,7 +268,39 @@ export const Guests = () => {
                 hover
                 className="border-2 border-gray-200 hover:border-indigo-300"
               >
-                <div className="flex items-center justify-between gap-4">
+                {/* Mobile Layout */}
+                <div className="block sm:hidden">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg font-bold text-white">
+                        {booking.guestName?.charAt(0).toUpperCase() || '?'}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-gray-900 text-base leading-tight">{booking.guestName}</h3>
+                      <p className="text-sm text-gray-600 mt-0.5">{booking.property?.name || 'N/A'}</p>
+                    </div>
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full border whitespace-nowrap ${docStatus.color}`}>
+                      {docStatus.icon}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 text-sm text-gray-600 mb-3">
+                    <span>📅 {format(parseISO(booking.checkIn), 'd MMM', { locale: it })} - {format(parseISO(booking.checkOut), 'd MMM', { locale: it })}</span>
+                    <span className="font-semibold text-green-600">{formatCurrency(booking.grossRevenue)}</span>
+                  </div>
+
+                  <button
+                    onClick={(e) => handleOpenDocuments(booking, e)}
+                    className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-medium rounded-xl text-sm flex items-center justify-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Gestisci Documenti
+                  </button>
+                </div>
+
+                {/* Desktop Layout */}
+                <div className="hidden sm:flex items-center justify-between gap-4">
                   {/* Guest info */}
                   <div className="flex items-center gap-4 min-w-0 flex-1">
                     <div className="w-14 h-14 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">

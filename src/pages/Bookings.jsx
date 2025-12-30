@@ -988,21 +988,21 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
         {/* Template & Products Section */}
         <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary-50 to-primary-100 px-4 py-3 border-b border-primary-200">
-            <h4 className="font-semibold text-primary-800 flex items-center gap-2">
-              <Package className="w-5 h-5" />
+          <div className="bg-gradient-to-r from-primary-50 to-primary-100 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-primary-200">
+            <h4 className="font-semibold text-primary-800 flex items-center gap-2 text-sm sm:text-base">
+              <Package className="w-4 h-4 sm:w-5 sm:h-5" />
               Costi Prodotti
             </h4>
           </div>
 
-          <div className="p-4 space-y-4">
-            {/* Template Selection - Card Style */}
+          <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+            {/* Template Selection - Horizontal scroll on mobile */}
             {availableTemplates.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                   Applica un template
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 sm:overflow-visible scrollbar-hide">
                   {availableTemplates.map(t => {
                     const isSelected = selectedTemplateId === t.id;
                     const templateCost = t.products?.reduce((sum, tp) =>
@@ -1012,22 +1012,22 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
                         key={t.id}
                         type="button"
                         onClick={() => handleTemplateChange(isSelected ? '' : t.id)}
-                        className={`p-3 rounded-xl border-2 text-left transition-all ${
+                        className={`flex-shrink-0 w-32 sm:w-auto p-2.5 sm:p-3 rounded-xl border-2 text-left transition-all ${
                           isSelected
                             ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200'
                             : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
                         }`}
                       >
-                        <div className="font-medium text-gray-900 text-sm truncate">{t.name}</div>
+                        <div className="font-medium text-gray-900 text-xs sm:text-sm truncate">{t.name}</div>
                         <div className="flex items-center justify-between mt-1">
-                          <span className="text-xs text-gray-500">{t.minGuests}-{t.maxGuests} ospiti</span>
-                          <span className={`text-xs font-semibold ${isSelected ? 'text-primary-600' : 'text-gray-600'}`}>
+                          <span className="text-[10px] sm:text-xs text-gray-500">{t.minGuests}-{t.maxGuests} ospiti</span>
+                          <span className={`text-xs sm:text-sm font-bold ${isSelected ? 'text-primary-600' : 'text-gray-700'}`}>
                             €{templateCost.toFixed(0)}
                           </span>
                         </div>
                         {isSelected && (
-                          <div className="mt-2 flex items-center justify-center">
-                            <span className="text-xs bg-primary-500 text-white px-2 py-0.5 rounded-full">
+                          <div className="mt-1.5 sm:mt-2 flex items-center justify-center">
+                            <span className="text-[10px] sm:text-xs bg-primary-500 text-white px-2 py-0.5 rounded-full">
                               Applicato
                             </span>
                           </div>
@@ -1046,7 +1046,7 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
                 <div className="relative flex justify-center">
-                  <span className="px-3 bg-white text-sm text-gray-500">oppure aggiungi singoli prodotti</span>
+                  <span className="px-2 sm:px-3 bg-white text-xs sm:text-sm text-gray-500">oppure aggiungi prodotti</span>
                 </div>
               </div>
             )}
@@ -1056,10 +1056,10 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Cerca prodotto da aggiungere..."
+                placeholder="Cerca prodotto..."
                 value={productSearchTerm}
                 onChange={(e) => setProductSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
               />
               {filteredProducts.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-48 overflow-auto">
@@ -1068,11 +1068,11 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
                       key={product.id}
                       type="button"
                       onClick={() => handleAddProduct(product)}
-                      className="w-full px-4 py-3 text-left hover:bg-primary-50 flex items-center justify-between border-b border-gray-100 last:border-0"
+                      className="w-full px-3 sm:px-4 py-3 text-left hover:bg-primary-50 active:bg-primary-100 flex items-center justify-between border-b border-gray-100 last:border-0"
                     >
-                      <span className="font-medium text-gray-900">{product.name}</span>
-                      <span className="text-sm text-primary-600 font-medium">
-                        €{parseFloat(product.price).toFixed(2)}/{product.unit}
+                      <span className="font-medium text-gray-900 text-sm">{product.name}</span>
+                      <span className="text-sm text-primary-600 font-semibold ml-2">
+                        €{parseFloat(product.price).toFixed(2)}
                       </span>
                     </button>
                   ))}
@@ -1082,9 +1082,9 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
 
             {/* Selected products */}
             {selectedProducts.length === 0 ? (
-              <div className="text-center py-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-gray-500 text-sm">
+              <div className="text-center py-4 sm:py-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                <Package className="w-8 h-8 sm:w-10 sm:h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500 text-xs sm:text-sm">
                   {availableTemplates.length > 0
                     ? 'Seleziona un template o cerca prodotti'
                     : 'Cerca prodotti da aggiungere'
@@ -1093,58 +1093,64 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">
-                    Prodotti selezionati ({selectedProducts.length})
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs sm:text-sm font-medium text-gray-700">
+                    Prodotti ({selectedProducts.length})
                   </span>
                   {selectedTemplateId && selectedTemplateId !== 'custom' && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                    <span className="text-[10px] sm:text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                       da template
                     </span>
                   )}
                 </div>
-                <div className="space-y-2 max-h-52 overflow-auto pr-1">
+                <div className="space-y-2 max-h-44 sm:max-h-52 overflow-auto">
                   {selectedProducts.map(p => (
-                    <div key={p.productId} className="flex items-center gap-3 p-3 bg-white rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-sm">{p.product?.name}</p>
-                        <p className="text-xs text-gray-500">
-                          €{parseFloat(p.product?.price || 0).toFixed(2)} / {p.product?.unit}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(p.productId, Math.max(1, p.quantity - 1))}
-                          className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 font-bold"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={Math.round(p.quantity)}
-                          onChange={(e) => handleQuantityChange(p.productId, e.target.value)}
-                          className="w-14 px-2 py-1.5 text-center border-2 border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(p.productId, p.quantity + 1)}
-                          className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 font-bold"
-                        >
-                          +
-                        </button>
-                        <span className="text-sm font-semibold text-gray-700 w-16 text-right">
-                          €{(p.quantity * (p.product?.price || 0)).toFixed(2)}
-                        </span>
+                    <div key={p.productId} className="p-2.5 sm:p-3 bg-white rounded-xl border-2 border-gray-100">
+                      {/* Mobile: Stack layout */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm leading-tight">{p.product?.name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            €{parseFloat(p.product?.price || 0).toFixed(2)} / {p.product?.unit}
+                          </p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveProduct(p.productId)}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
+                      </div>
+                      {/* Quantity controls row */}
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(p.productId, Math.max(1, p.quantity - 1))}
+                            className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-lg text-gray-600 font-bold text-lg"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={Math.round(p.quantity)}
+                            onChange={(e) => handleQuantityChange(p.productId, e.target.value)}
+                            className="w-14 sm:w-12 px-1 py-1.5 text-center border-2 border-gray-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(p.productId, p.quantity + 1)}
+                            className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-lg text-gray-600 font-bold text-lg"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="text-sm sm:text-base font-bold text-gray-800">
+                          €{(p.quantity * (p.product?.price || 0)).toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -1154,9 +1160,9 @@ function BookingModal({ isOpen, onClose, booking, defaultCheckIn, properties, ch
 
             {/* Variable costs total */}
             {selectedProducts.length > 0 && (
-              <div className="flex items-center justify-between p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border-2 border-red-100">
-                <span className="font-semibold text-gray-700">Totale Costi Prodotti:</span>
-                <span className="text-xl font-bold text-red-600">€{variableCosts.toFixed(2)}</span>
+              <div className="flex items-center justify-between p-2.5 sm:p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border-2 border-red-100">
+                <span className="font-semibold text-gray-700 text-sm sm:text-base">Totale Costi:</span>
+                <span className="text-lg sm:text-xl font-bold text-red-600">€{variableCosts.toFixed(2)}</span>
               </div>
             )}
           </div>

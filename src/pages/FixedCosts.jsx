@@ -377,47 +377,47 @@ export const FixedCosts = () => {
 
       {/* Filtri con stile senior-friendly */}
       <Card className="border-2 border-gray-200">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="space-y-3 md:space-y-0 md:flex md:flex-row md:gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 md:w-6 md:h-6 text-gray-400" />
             <input
               type="text"
               placeholder="🔍 Cerca costi..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              className="w-full pl-11 md:pl-12 pr-4 py-3 text-base md:text-lg border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             />
           </div>
-          <div className="flex gap-4">
+          <div className="grid grid-cols-2 gap-2 md:flex md:gap-4">
             <div className="relative">
               <select
                 value={filterProperty}
                 onChange={(e) => setFilterProperty(e.target.value)}
-                className="pl-4 pr-10 py-3 text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 appearance-none bg-white min-w-[180px]"
+                className="w-full pl-3 pr-8 py-3 text-sm md:text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 appearance-none bg-white md:min-w-[180px]"
               >
-                <option value="">🏠 Tutte le proprietà</option>
+                <option value="">🏠 Proprietà</option>
                 {properties.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 pointer-events-none" />
             </div>
             <div className="relative">
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="pl-4 pr-10 py-3 text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 appearance-none bg-white min-w-[180px]"
+                className="w-full pl-3 pr-8 py-3 text-sm md:text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 appearance-none bg-white md:min-w-[180px]"
               >
-                <option value="">📂 Tutte le categorie</option>
+                <option value="">📂 Categorie</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {getCategoryEmoji(c.name)} {c.name}
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 pointer-events-none" />
             </div>
           </div>
         </div>

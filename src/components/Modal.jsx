@@ -11,37 +11,45 @@ export const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     xl: 'sm:max-w-6xl',
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Mobile: full screen, Desktop: centered */}
-      <div className="flex min-h-screen sm:items-center sm:justify-center sm:p-4">
-        {/* Overlay with blur */}
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-          onClick={onClose}
-        />
+  // Prevent body scroll when modal is open
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
+  return (
+    <div className="fixed inset-0 z-50">
+      {/* Overlay with blur */}
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Modal container - handles scroll for desktop */}
+      <div className="fixed inset-0 flex sm:items-center sm:justify-center sm:p-4 overflow-hidden">
         {/* Modal - full screen on mobile, centered on desktop */}
         <div className={`
-          relative bg-white shadow-2xl w-full
-          min-h-screen sm:min-h-0
-          sm:rounded-2xl ${sizes[size]} sm:max-h-[90vh] overflow-hidden
+          relative bg-white shadow-2xl w-full flex flex-col
+          h-full sm:h-auto sm:max-h-[90vh]
+          sm:rounded-2xl ${sizes[size]}
           animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300
         `}>
-          {/* Header with gradient background */}
-          <div className="sticky top-0 flex items-center justify-between p-4 sm:p-5 border-b-2 border-gray-100 bg-gradient-to-r from-gray-50 to-white z-10">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate pr-4">{title}</h2>
+          {/* Header - fixed at top */}
+          <div className="flex-shrink-0 flex items-center justify-between p-4 sm:p-5 border-b-2 border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+            <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate pr-4">{title}</h2>
             <button
               onClick={onClose}
-              className="p-2.5 hover:bg-red-50 hover:text-red-600 text-gray-400 rounded-xl transition-colors flex-shrink-0 border-2 border-transparent hover:border-red-200"
+              className="p-2 sm:p-2.5 hover:bg-red-50 hover:text-red-600 text-gray-400 rounded-xl transition-colors flex-shrink-0 border-2 border-transparent hover:border-red-200"
               title="Chiudi"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
 
-          {/* Content with better padding and scrolling */}
-          <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-80px)] sm:max-h-[calc(90vh-100px)]">
+          {/* Content - only this scrolls */}
+          <div className="flex-1 p-4 sm:p-6 overflow-y-auto overscroll-contain">
             {children}
           </div>
         </div>
