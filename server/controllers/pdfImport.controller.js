@@ -1,5 +1,7 @@
 import prisma from '../config/database.js';
-import pdf from 'pdf-parse';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 
 // Parse Booking.com PDF and extract booking data
 function parseBookingComPDF(text) {
