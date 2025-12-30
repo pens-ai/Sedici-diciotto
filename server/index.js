@@ -19,6 +19,7 @@ import settingsRoutes from './routes/settings.routes.js';
 import checkinRoutes from './routes/checkin.routes.js';
 import icalRoutes from './routes/ical.routes.js';
 import templatesRoutes from './routes/templates.routes.js';
+import { startIcalSyncJob } from './jobs/icalSync.job.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -117,6 +118,9 @@ app.listen(PORT, () => {
 📝 Environment: ${process.env.NODE_ENV || 'development'}
 🔗 API Base URL: http://localhost:${PORT}/api
   `);
+
+  // Start iCal automatic sync job
+  startIcalSyncJob();
 });
 
 export default app;

@@ -38,6 +38,7 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.294.0",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^4.2.1",
     "node-ical": "^0.22.1",
     "nodemailer": "^6.9.7",
     "postcss": "^8.4.32",
