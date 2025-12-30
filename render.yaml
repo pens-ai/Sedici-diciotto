@@ -9,7 +9,7 @@ services:
     name: gestionale-case-vacanza
     env: node
     plan: free
-    buildCommand: npm ci && npm run build && npx prisma db push && npx prisma db seed
+    buildCommand: npm ci && npm run build && npx prisma db push --accept-data-loss && npx prisma db seed
     startCommand: NODE_ENV=production node server/index.js
     envVars:
       - key: JWT_SECRET
