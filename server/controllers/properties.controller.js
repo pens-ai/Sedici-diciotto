@@ -25,13 +25,6 @@ export const getProperties = async (req, res, next) => {
         where,
         include: {
           images: { orderBy: { orderIndex: 'asc' } },
-          templates: {
-            include: {
-              products: {
-                include: { product: true },
-              },
-            },
-          },
           _count: { select: { bookings: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -60,13 +53,6 @@ export const getProperty = async (req, res, next) => {
       },
       include: {
         images: { orderBy: { orderIndex: 'asc' } },
-        templates: {
-          include: {
-            products: {
-              include: { product: true },
-            },
-          },
-        },
       },
     });
 
@@ -98,7 +84,6 @@ export const createProperty = async (req, res, next) => {
       },
       include: {
         images: true,
-        templates: true,
       },
     });
 
@@ -135,13 +120,6 @@ export const updateProperty = async (req, res, next) => {
       },
       include: {
         images: { orderBy: { orderIndex: 'asc' } },
-        templates: {
-          include: {
-            products: {
-              include: { product: true },
-            },
-          },
-        },
       },
     });
 
@@ -249,139 +227,3 @@ export const deleteImage = async (req, res, next) => {
   }
 };
 
-// Get templates for a property
-export const getTemplates = async (req, res, next) => {
-  try {
-    const property = await prisma.property.findFirst({
-      where: { id: req.params.id, userId: req.userId },
-    });
-
-    if (!property) {
-      return res.status(404).json({ error: 'Proprietà non trovata' });
-    }
-
-    const templates = await prisma.template.findMany({
-      where: { propertyId: req.params.id },
-      include: {
-        products: {
-          include: { product: true },
-        },
-      },
-      orderBy: { minGuests: 'asc' },
-    });
-
-    res.json(templates);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Create template
-export const createTemplate = async (req, res, next) => {
-  try {
-    const property = await prisma.property.findFirst({
-      where: { id: req.params.id, userId: req.userId },
-    });
-
-    if (!property) {
-      return res.status(404).json({ error: 'Proprietà non trovata' });
-    }
-
-    const { name, minGuests, maxGuests, description, products } = req.body;
-
-    const template = await prisma.template.create({
-      data: {
-        propertyId: req.params.id,
-        name,
-        minGuests: parseInt(minGuests),
-        maxGuests: parseInt(maxGuests),
-        description,
-        products: products?.length > 0 ? {
-          create: products.map(p => ({
-            productId: p.productId,
-            quantity: parseFloat(p.quantity),
-          })),
-        } : undefined,
-      },
-      include: {
-        products: {
-          include: { product: true },
-        },
-      },
-    });
-
-    res.status(201).json(template);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Update template
-export const updateTemplate = async (req, res, next) => {
-  try {
-    const template = await prisma.template.findFirst({
-      where: { id: req.params.templateId },
-      include: {
-        property: { select: { userId: true } },
-      },
-    });
-
-    if (!template || template.property.userId !== req.userId) {
-      return res.status(404).json({ error: 'Template non trovato' });
-    }
-
-    const { name, minGuests, maxGuests, description, products } = req.body;
-
-    // Delete existing products and recreate
-    await prisma.templateProduct.deleteMany({
-      where: { templateId: req.params.templateId },
-    });
-
-    const updated = await prisma.template.update({
-      where: { id: req.params.templateId },
-      data: {
-        name,
-        minGuests: parseInt(minGuests),
-        maxGuests: parseInt(maxGuests),
-        description,
-        products: products?.length > 0 ? {
-          create: products.map(p => ({
-            productId: p.productId,
-            quantity: parseFloat(p.quantity),
-          })),
-        } : undefined,
-      },
-      include: {
-        products: {
-          include: { product: true },
-        },
-      },
-    });
-
-    res.json(updated);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Delete template
-export const deleteTemplate = async (req, res, next) => {
-  try {
-    const template = await prisma.template.findFirst({
-      where: { id: req.params.templateId },
-      include: {
-        property: { select: { userId: true } },
-      },
-    });
-
-    if (!template || template.property.userId !== req.userId) {
-      return res.status(404).json({ error: 'Template non trovato' });
-    }
-
-    await prisma.template.delete({ where: { id: req.params.templateId } });
-
-    res.json({ message: 'Template eliminato con successo' });
-  } catch (error) {
-    next(error);
-  }
-};
