@@ -1,66 +1,105 @@
 import prisma from '../config/database.js';
-
-// Lazy load pdf-parse to handle CommonJS module
-let pdfParse = null;
-async function getPdfParse() {
-  if (!pdfParse) {
-    // Dynamic import for CommonJS module
-    const module = await import('pdf-parse');
-    pdfParse = module.default || module;
-  }
-  return pdfParse;
-}
+import { PDFParse } from 'pdf-parse';
 
 // Parse Booking.com PDF and extract booking data
 function parseBookingComPDF(text) {
   const data = {};
 
-  // Booking number - value on next line
-  const bookingMatch = text.match(/Booking number:\s*\n?(\d+)/i);
+  // Normalize text - replace multiple spaces/newlines with single space for easier parsing
+  const normalizedText = text.replace(/\s+/g, ' ');
+
+  // Booking number
+  const bookingMatch = text.match(/Booking number:\s*\n?(\d+)/i) ||
+                       normalizedText.match(/Booking number:\s*(\d+)/i);
   if (bookingMatch) data.bookingNumber = bookingMatch[1];
 
   // Guest name - look for line after "Guest information:"
-  const guestMatch = text.match(/Guest information:\s*\n([^\n]+)/i);
+  const guestMatch = text.match(/Guest information:\s*\n([^\n]+)/i) ||
+                     normalizedText.match(/Guest information:\s*([A-Za-z\s]+?)(?:\s+[A-Z][a-z]+$|\s+Total)/i);
   if (guestMatch) data.guestName = guestMatch[1].trim();
 
   // Country - line after guest name
   const countryMatch = text.match(/Guest information:\s*\n[^\n]+\n([A-Za-z]+)/i);
   if (countryMatch) data.country = countryMatch[1].trim();
 
-  // Total guests - extract number, value might be on next line
-  const guestsMatch = text.match(/Total guests:\s*\n?(\d+)\s*adult/i);
+  // Total guests - extract number
+  const guestsMatch = text.match(/Total guests:\s*\n?(\d+)\s*adult/i) ||
+                      normalizedText.match(/Total guests:\s*(\d+)\s*adult/i) ||
+                      normalizedText.match(/(\d+)\s*adult/i);
   if (guestsMatch) data.numberOfGuests = parseInt(guestsMatch[1]);
 
-  // Check-in date - handles "Check-in:\nWednesday\n1 May 2026" format
-  const checkinMatch = text.match(/Check-in:\s*\n(?:[A-Za-z]+\n)?(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
-  if (checkinMatch) data.checkIn = parseBookingDate(checkinMatch[1]);
+  // Date patterns - try multiple formats
+  // Pattern 1: "Check-in:\nWednesday\n1 May 2026"
+  // Pattern 2: "Check-in: Wednesday 1 May 2026"
+  // Pattern 3: "1 May 2026" anywhere after "Check-in"
+  const dateRegex = /(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/g;
 
-  // Check-out date - handles "Check-out:\nFriday\n3 May 2026" format
-  const checkoutMatch = text.match(/Check-out:\s*\n(?:[A-Za-z]+\n)?(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
-  if (checkoutMatch) data.checkOut = parseBookingDate(checkoutMatch[1]);
+  // Find all dates in the text
+  const allDates = [];
+  let dateMatch;
+  while ((dateMatch = dateRegex.exec(text)) !== null) {
+    const parsed = parseBookingDate(`${dateMatch[1]} ${dateMatch[2]} ${dateMatch[3]}`);
+    if (parsed) {
+      allDates.push({ date: parsed, index: dateMatch.index });
+    }
+  }
 
-  // Length of stay - value on next line
-  const nightsMatch = text.match(/Length of stay:\s*\n?(\d+)\s*night/i);
+  // Find check-in date - after "Check-in" keyword
+  const checkinIndex = text.toLowerCase().indexOf('check-in');
+  const checkoutIndex = text.toLowerCase().indexOf('check-out');
+
+  if (checkinIndex !== -1 && allDates.length > 0) {
+    // Find first date after check-in keyword
+    const checkinDate = allDates.find(d => d.index > checkinIndex && (checkoutIndex === -1 || d.index < checkoutIndex));
+    if (checkinDate) data.checkIn = checkinDate.date;
+  }
+
+  if (checkoutIndex !== -1 && allDates.length > 0) {
+    // Find first date after check-out keyword
+    const checkoutDate = allDates.find(d => d.index > checkoutIndex);
+    if (checkoutDate) data.checkOut = checkoutDate.date;
+  }
+
+  // Fallback: if we have exactly 2 dates, use them as check-in/check-out
+  if (!data.checkIn && !data.checkOut && allDates.length >= 2) {
+    data.checkIn = allDates[0].date;
+    data.checkOut = allDates[1].date;
+  }
+
+  // Length of stay
+  const nightsMatch = text.match(/Length of stay:\s*\n?(\d+)\s*night/i) ||
+                      normalizedText.match(/Length of stay:\s*(\d+)\s*night/i) ||
+                      normalizedText.match(/(\d+)\s*nights?(?:\s|$)/i);
   if (nightsMatch) data.nights = parseInt(nightsMatch[1]);
 
-  // Total price - handles "Total price:\n€ 340.00" or "€340.00"
-  const priceMatch = text.match(/Total price:\s*\n?€?\s*([\d,.]+)/i);
+  // Calculate nights from dates if not found
+  if (!data.nights && data.checkIn && data.checkOut) {
+    data.nights = Math.ceil((data.checkOut - data.checkIn) / (1000 * 60 * 60 * 24));
+  }
+
+  // Total price - try multiple patterns
+  const priceMatch = text.match(/Total price:\s*\n?€?\s*([\d,.]+)/i) ||
+                     normalizedText.match(/Total price:\s*€?\s*([\d,.]+)/i) ||
+                     normalizedText.match(/€\s*([\d,.]+)\s*Total/i);
   if (priceMatch) data.grossRevenue = parseFloat(priceMatch[1].replace(',', '.'));
 
-  // Commission - handles "Commission:\n€ 51.00"
-  const commissionMatch = text.match(/Commission:\s*\n?€?\s*([\d,.]+)/i);
+  // Commission
+  const commissionMatch = text.match(/Commission:\s*\n?€?\s*([\d,.]+)/i) ||
+                          normalizedText.match(/Commission:\s*€?\s*([\d,.]+)/i);
   if (commissionMatch) data.commissionAmount = parseFloat(commissionMatch[1].replace(',', '.'));
 
   // Commissionable amount
-  const commissionableMatch = text.match(/Commissionable amount:\s*\n?€?\s*([\d,.]+)/i);
+  const commissionableMatch = text.match(/Commissionable amount:\s*\n?€?\s*([\d,.]+)/i) ||
+                              normalizedText.match(/Commissionable amount:\s*€?\s*([\d,.]+)/i);
   if (commissionableMatch) data.commissionableAmount = parseFloat(commissionableMatch[1].replace(',', '.'));
 
-  // Property name (usually appears before "Breakfast" or rate details)
+  // Property name
   const propertyMatch = text.match(/€\s*[\d,.]+\s*\n\n([A-Za-z0-9\s]+)\n(?:Breakfast|Standard|[A-Z])/);
   if (propertyMatch) data.propertyName = propertyMatch[1].trim();
 
   // Arrival time
-  const arrivalMatch = text.match(/Approximate arrival time:\s*\n?([^\n]+)/i);
+  const arrivalMatch = text.match(/Approximate arrival time:\s*\n?([^\n]+)/i) ||
+                       normalizedText.match(/Approximate arrival time:\s*([^\.]+)/i);
   if (arrivalMatch) data.arrivalTime = arrivalMatch[1].trim();
 
   // Calculate commission rate
@@ -75,6 +114,10 @@ function parseBookingComPDF(text) {
 
   // Set source
   data.source = 'Booking.com';
+
+  // Debug log
+  console.log('[PDF Parse] Extracted data:', JSON.stringify(data, null, 2));
+  console.log('[PDF Parse] Found dates:', allDates.map(d => d.date.toISOString()));
 
   return data;
 }
@@ -123,9 +166,14 @@ export const parsePDF = async (req, res, next) => {
     }
 
     const pdfBuffer = req.file.buffer;
-    const parsePdfFn = await getPdfParse();
-    const pdfData = await parsePdfFn(pdfBuffer);
-    const text = pdfData.text;
+
+    // pdf-parse 2.x API: create instance, load, then getText
+    // Convert Buffer to Uint8Array as required by pdf-parse 2.x
+    const pdfData = new Uint8Array(pdfBuffer);
+    const parser = new PDFParse(pdfData);
+    await parser.load();
+    const textResult = await parser.getText();
+    const text = textResult.pages.map(p => p.text).join('\n');
 
     // Detect PDF source and parse accordingly
     let parsedData;

@@ -208,12 +208,12 @@ export const Bookings = () => {
     }
   };
 
-  // Confirm PDF import
-  const handleConfirmPDFImport = async (propertyId) => {
-    if (!pdfParsedData || !propertyId) return;
+  // Confirm PDF import - receives edited data from modal
+  const handleConfirmPDFImport = async (propertyId, editedData) => {
+    if (!propertyId || !editedData) return;
 
     try {
-      await bookingsApi.importBookingFromPDF(propertyId, pdfParsedData);
+      await bookingsApi.importBookingFromPDF(propertyId, editedData);
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       toast.success('Prenotazione importata con successo!');
       setShowPDFImportModal(false);
@@ -1455,32 +1455,99 @@ function BookingDetailsModal({ isOpen, onClose, booking, onStatusChange }) {
 function PDFImportModal({ isOpen, onClose, parsedData, properties, onConfirm }) {
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [editedData, setEditedData] = useState({});
 
+  // Initialize editable data when modal opens
   useEffect(() => {
-    if (isOpen && properties.length > 0) {
-      // Try to match property by name from PDF
-      if (parsedData?.propertyName) {
-        const match = properties.find(p =>
-          p.name.toLowerCase().includes(parsedData.propertyName.toLowerCase()) ||
-          parsedData.propertyName.toLowerCase().includes(p.name.toLowerCase())
-        );
-        if (match) {
-          setSelectedPropertyId(match.id);
-          return;
+    if (isOpen && parsedData) {
+      // Format dates for input fields
+      const formatDateForInput = (date) => {
+        if (!date) return '';
+        try {
+          const d = new Date(date);
+          return d.toISOString().split('T')[0];
+        } catch {
+          return '';
         }
+      };
+
+      setEditedData({
+        guestName: parsedData.guestName || '',
+        numberOfGuests: parsedData.numberOfGuests || 1,
+        checkIn: formatDateForInput(parsedData.checkIn),
+        checkOut: formatDateForInput(parsedData.checkOut),
+        nights: parsedData.nights || 0,
+        grossRevenue: parsedData.grossRevenue || 0,
+        commissionAmount: parsedData.commissionAmount || 0,
+        commissionRate: parsedData.commissionRate || 15,
+        netRevenue: parsedData.netRevenue || 0,
+        bookingNumber: parsedData.bookingNumber || '',
+        country: parsedData.country || '',
+        arrivalTime: parsedData.arrivalTime || '',
+      });
+
+      // Try to match property by name
+      if (properties.length > 0) {
+        if (parsedData.propertyName) {
+          const match = properties.find(p =>
+            p.name.toLowerCase().includes(parsedData.propertyName.toLowerCase()) ||
+            parsedData.propertyName.toLowerCase().includes(p.name.toLowerCase())
+          );
+          if (match) {
+            setSelectedPropertyId(match.id);
+            return;
+          }
+        }
+        setSelectedPropertyId(properties[0]?.id || '');
       }
-      setSelectedPropertyId(properties[0]?.id || '');
     }
-  }, [isOpen, properties, parsedData]);
+  }, [isOpen, parsedData, properties]);
+
+  // Recalculate nights when dates change
+  useEffect(() => {
+    if (editedData.checkIn && editedData.checkOut) {
+      const checkIn = new Date(editedData.checkIn);
+      const checkOut = new Date(editedData.checkOut);
+      const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+      if (nights > 0 && nights !== editedData.nights) {
+        setEditedData(prev => ({ ...prev, nights }));
+      }
+    }
+  }, [editedData.checkIn, editedData.checkOut]);
+
+  // Recalculate net revenue when gross or commission changes
+  useEffect(() => {
+    const gross = parseFloat(editedData.grossRevenue) || 0;
+    const commission = parseFloat(editedData.commissionAmount) || 0;
+    const net = gross - commission;
+    if (net !== editedData.netRevenue) {
+      setEditedData(prev => ({ ...prev, netRevenue: net }));
+    }
+  }, [editedData.grossRevenue, editedData.commissionAmount]);
+
+  const handleFieldChange = (field, value) => {
+    setEditedData(prev => ({ ...prev, [field]: value }));
+  };
 
   const handleConfirm = async () => {
     if (!selectedPropertyId) {
       toast.error('Seleziona una proprietà');
       return;
     }
+    if (!editedData.checkIn || !editedData.checkOut) {
+      toast.error('Inserisci le date di check-in e check-out');
+      return;
+    }
     setIsImporting(true);
     try {
-      await onConfirm(selectedPropertyId);
+      // Convert dates back to Date objects for API
+      const dataToSubmit = {
+        ...editedData,
+        checkIn: new Date(editedData.checkIn),
+        checkOut: new Date(editedData.checkOut),
+        source: parsedData?.source || 'PDF Import',
+      };
+      await onConfirm(selectedPropertyId, dataToSubmit);
     } finally {
       setIsImporting(false);
     }
@@ -1488,18 +1555,9 @@ function PDFImportModal({ isOpen, onClose, parsedData, properties, onConfirm }) 
 
   if (!parsedData) return null;
 
-  const formatDate = (date) => {
-    if (!date) return 'N/D';
-    try {
-      return format(new Date(date), 'dd MMMM yyyy', { locale: it });
-    } catch {
-      return 'Data non valida';
-    }
-  };
-
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Import da PDF Booking.com" size="lg">
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Source badge */}
         <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -1507,16 +1565,16 @@ function PDFImportModal({ isOpen, onClose, parsedData, properties, onConfirm }) 
           </div>
           <div>
             <p className="font-semibold text-blue-900">{parsedData.source || 'PDF Import'}</p>
-            {parsedData.bookingNumber && (
-              <p className="text-sm text-blue-700">Prenotazione #{parsedData.bookingNumber}</p>
+            {editedData.bookingNumber && (
+              <p className="text-sm text-blue-700">Prenotazione #{editedData.bookingNumber}</p>
             )}
           </div>
         </div>
 
         {/* Property selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Assegna a questa proprietà *
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Proprietà *
           </label>
           <Select
             value={selectedPropertyId}
@@ -1528,97 +1586,112 @@ function PDFImportModal({ isOpen, onClose, parsedData, properties, onConfirm }) 
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </Select>
-          {parsedData.propertyName && (
-            <p className="text-xs text-gray-500 mt-1">
-              Nome nel PDF: "{parsedData.propertyName}"
-            </p>
-          )}
         </div>
 
-        {/* Parsed data preview */}
-        <div className="bg-gray-50 rounded-xl p-5 space-y-4">
-          <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-500" />
-            Dati estratti dal PDF
+        {/* Editable fields */}
+        <div className="bg-gray-50 rounded-xl p-4 space-y-4">
+          <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+            <Edit2 className="w-4 h-4 text-primary-500" />
+            Dati prenotazione (puoi modificarli)
           </h4>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Guest info */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-sm text-gray-500">Ospite</p>
-              <p className="font-semibold text-gray-900">{parsedData.guestName || 'N/D'}</p>
-              {parsedData.country && (
-                <p className="text-sm text-gray-600">{parsedData.country}</p>
-              )}
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nome ospite</label>
+              <Input
+                type="text"
+                value={editedData.guestName}
+                onChange={(e) => handleFieldChange('guestName', e.target.value)}
+                placeholder="Nome ospite"
+              />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Numero ospiti</p>
-              <p className="font-semibold text-gray-900">{parsedData.numberOfGuests || 1}</p>
+              <label className="block text-xs font-medium text-gray-600 mb-1">N. ospiti</label>
+              <Input
+                type="number"
+                min="1"
+                value={editedData.numberOfGuests}
+                onChange={(e) => handleFieldChange('numberOfGuests', parseInt(e.target.value) || 1)}
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-lg p-3 border">
-              <p className="text-sm text-gray-500">Check-in</p>
-              <p className="font-semibold text-gray-900">{formatDate(parsedData.checkIn)}</p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border">
-              <p className="text-sm text-gray-500">Check-out</p>
-              <p className="font-semibold text-gray-900">{formatDate(parsedData.checkOut)}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-sm text-gray-500">Notti</p>
-              <p className="font-semibold text-gray-900">{parsedData.nights || 'N/D'}</p>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Check-in *</label>
+              <Input
+                type="date"
+                value={editedData.checkIn}
+                onChange={(e) => handleFieldChange('checkIn', e.target.value)}
+                required
+              />
             </div>
-            {parsedData.arrivalTime && (
-              <div className="col-span-2">
-                <p className="text-sm text-gray-500">Orario arrivo</p>
-                <p className="font-semibold text-gray-900">{parsedData.arrivalTime}</p>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Check-out *</label>
+              <Input
+                type="date"
+                value={editedData.checkOut}
+                onChange={(e) => handleFieldChange('checkOut', e.target.value)}
+                required
+              />
+            </div>
           </div>
 
-          {/* Financial summary */}
-          <div className="border-t pt-4 space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Totale incassato</span>
-              <span className="font-bold text-lg">€{parsedData.grossRevenue?.toFixed(2) || '0.00'}</span>
+          {/* Nights (calculated) */}
+          <div className="text-sm text-gray-600">
+            Notti: <span className="font-semibold">{editedData.nights || 0}</span>
+          </div>
+
+          {/* Financial */}
+          <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Totale incassato (€)</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editedData.grossRevenue}
+                onChange={(e) => handleFieldChange('grossRevenue', parseFloat(e.target.value) || 0)}
+              />
             </div>
-            {parsedData.commissionAmount > 0 && (
-              <div className="flex justify-between items-center text-red-600">
-                <span>Commissione ({parsedData.commissionRate?.toFixed(1) || 0}%)</span>
-                <span>-€{parsedData.commissionAmount?.toFixed(2)}</span>
-              </div>
-            )}
-            {parsedData.netRevenue > 0 && (
-              <div className="flex justify-between items-center font-semibold text-green-600 border-t pt-2">
-                <span>Netto</span>
-                <span>€{parsedData.netRevenue?.toFixed(2)}</span>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Commissione (€)</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editedData.commissionAmount}
+                onChange={(e) => handleFieldChange('commissionAmount', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+          </div>
+
+          {/* Net revenue display */}
+          <div className="flex justify-between items-center pt-2 border-t">
+            <span className="font-medium text-gray-700">Netto</span>
+            <span className="font-bold text-lg text-green-600">€{(editedData.netRevenue || 0).toFixed(2)}</span>
           </div>
         </div>
 
-        {/* Warning */}
-        <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-yellow-800">
-            <p className="font-medium">Verifica i dati prima di importare</p>
-            <p>I dati sono stati estratti automaticamente. Controlla che siano corretti prima di confermare.</p>
-          </div>
+        {/* Info */}
+        <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-800">
+            Verifica e correggi eventuali dati mancanti o errati prima di importare.
+          </p>
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
           <Button type="button" variant="secondary" onClick={onClose} fullWidth>
             Annulla
           </Button>
           <Button
             onClick={handleConfirm}
             fullWidth
-            disabled={!selectedPropertyId || isImporting}
+            disabled={!selectedPropertyId || isImporting || !editedData.checkIn || !editedData.checkOut}
           >
             {isImporting ? 'Importazione...' : 'Importa Prenotazione'}
           </Button>
