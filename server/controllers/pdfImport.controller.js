@@ -1,11 +1,15 @@
 import prisma from '../config/database.js';
-import { createRequire } from 'module';
 
-// pdf-parse is CommonJS only, use createRequire
-const require = createRequire(import.meta.url);
-const pdfParseModule = require('pdf-parse');
-// Handle both default export and direct function export
-const pdfParse = pdfParseModule.default || pdfParseModule;
+// Lazy load pdf-parse to handle CommonJS module
+let pdfParse = null;
+async function getPdfParse() {
+  if (!pdfParse) {
+    // Dynamic import for CommonJS module
+    const module = await import('pdf-parse');
+    pdfParse = module.default || module;
+  }
+  return pdfParse;
+}
 
 // Parse Booking.com PDF and extract booking data
 function parseBookingComPDF(text) {
@@ -119,7 +123,8 @@ export const parsePDF = async (req, res, next) => {
     }
 
     const pdfBuffer = req.file.buffer;
-    const pdfData = await pdfParse(pdfBuffer);
+    const parsePdfFn = await getPdfParse();
+    const pdfData = await parsePdfFn(pdfBuffer);
     const text = pdfData.text;
 
     // Detect PDF source and parse accordingly
