@@ -149,7 +149,18 @@ export const removeICalUrl = async (req, res, next) => {
     }
 
     const existingUrls = property.iCalUrls || [];
+    const urlToRemove = existingUrls.find(u => u.id === urlId);
     const newUrls = existingUrls.filter(u => u.id !== urlId);
+
+    // Delete associated calendar blocks from this source
+    if (urlToRemove) {
+      await prisma.calendarBlock.deleteMany({
+        where: {
+          propertyId: property.id,
+          source: urlToRemove.name,
+        },
+      });
+    }
 
     await prisma.property.update({
       where: { id: propertyId },
