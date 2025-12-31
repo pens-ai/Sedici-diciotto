@@ -101,34 +101,40 @@ export const TouristTax = () => {
         const checkIn = new Date(booking.checkIn);
         const guests = booking.guests || [];
 
-        // Count eligible guests (over 14 at check-in)
+        // Count eligible guests (over 14 at check-in) - ONLY based on actual guest data
         let eligibleGuests = 0;
         let exemptGuests = 0;
+        let guestsWithBirthDate = 0;
 
-        if (guests.length > 0) {
-          guests.forEach(guest => {
+        guests.forEach(guest => {
+          if (guest.birthDate) {
+            guestsWithBirthDate++;
             const age = calculateAgeAtDate(guest.birthDate, checkIn);
             if (age !== null && age >= MIN_AGE) {
               eligibleGuests++;
             } else if (age !== null && age < MIN_AGE) {
               exemptGuests++;
             }
-          });
-        } else {
-          // If no guest registry, assume all guests are adults
-          eligibleGuests = booking.numberOfGuests;
-        }
+          }
+        });
+
+        // Check if guest data is complete
+        const hasCompleteData = guestsWithBirthDate === booking.numberOfGuests && guestsWithBirthDate > 0;
+        const missingGuestData = booking.numberOfGuests - guestsWithBirthDate;
 
         // Calculate taxable nights (max 3)
         const taxableNights = Math.min(booking.nights, MAX_NIGHTS);
 
-        // Calculate tax
+        // Calculate tax only on guests with verified birth dates
         const taxAmount = eligibleGuests * taxableNights * RATE_PER_PERSON_PER_NIGHT;
 
         return {
           ...booking,
           eligibleGuests,
           exemptGuests,
+          guestsWithBirthDate,
+          hasCompleteData,
+          missingGuestData,
           taxableNights,
           taxAmount,
           channelDisplay: booking.channel?.name || booking.iCalSource || 'N/A'
@@ -143,8 +149,10 @@ export const TouristTax = () => {
       totalAllGuests: acc.totalAllGuests + booking.numberOfGuests,
       totalPayingGuests: acc.totalPayingGuests + booking.eligibleGuests,
       totalExempt: acc.totalExempt + booking.exemptGuests,
-      totalBookings: acc.totalBookings + 1
-    }), { totalTax: 0, totalNights: 0, totalTaxableNights: 0, totalAllGuests: 0, totalPayingGuests: 0, totalExempt: 0, totalBookings: 0 });
+      totalBookings: acc.totalBookings + 1,
+      totalMissingData: acc.totalMissingData + booking.missingGuestData,
+      bookingsWithMissingData: acc.bookingsWithMissingData + (booking.hasCompleteData ? 0 : 1)
+    }), { totalTax: 0, totalNights: 0, totalTaxableNights: 0, totalAllGuests: 0, totalPayingGuests: 0, totalExempt: 0, totalBookings: 0, totalMissingData: 0, bookingsWithMissingData: 0 });
 
     return { bookings: processedBookings, totals };
   }, [bookingsData, selectedYear, selectedMonth, selectedProperty]);
@@ -254,13 +262,20 @@ export const TouristTax = () => {
           </button>
         </div>
 
-        {/* Property Filter */}
-        <div className="flex items-center justify-center gap-3 pt-2 border-t border-gray-200">
-          <Home className="w-5 h-5 text-gray-500" />
+      </Card>
+
+      {/* Property Filter - Prominent */}
+      <Card className={`p-4 ${selectedProperty !== 'all' ? 'bg-gradient-to-r from-primary-50 to-primary-100 border-2 border-primary-300' : ''}`}>
+        <div className="flex items-center justify-center gap-4">
+          <Home className={`w-6 h-6 ${selectedProperty !== 'all' ? 'text-primary-600' : 'text-gray-500'}`} />
           <select
             value={selectedProperty}
             onChange={(e) => setSelectedProperty(e.target.value)}
-            className="flex-1 max-w-xs px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className={`flex-1 max-w-md px-5 py-3 text-lg font-semibold border-2 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+              selectedProperty !== 'all'
+                ? 'border-primary-400 bg-white text-primary-800'
+                : 'border-gray-200 text-gray-700'
+            }`}
           >
             <option value="all">Tutte le case</option>
             {allProperties.map(prop => (
@@ -330,6 +345,25 @@ export const TouristTax = () => {
           <p className="text-sm text-yellow-800">
             <strong>{taxCalculation.totals.totalExempt}</strong> ospiti esenti (minori di {MIN_AGE} anni)
           </p>
+        </Card>
+      )}
+
+      {/* Warning for missing guest data */}
+      {taxCalculation.totals.bookingsWithMissingData > 0 && (
+        <Card className="p-4 bg-red-50 border-2 border-red-200">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-red-800">
+              <p className="font-medium mb-1">Dati ospiti incompleti</p>
+              <p>
+                <strong>{taxCalculation.totals.bookingsWithMissingData}</strong> prenotazioni con dati mancanti
+                ({taxCalculation.totals.totalMissingData} ospiti senza data di nascita).
+              </p>
+              <p className="mt-1 text-red-600">
+                Il calcolo della tassa si basa solo sugli ospiti che hanno compilato il check-in con la data di nascita.
+              </p>
+            </div>
+          </div>
         </Card>
       )}
 
@@ -411,9 +445,14 @@ export const TouristTax = () => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {taxCalculation.bookings.map(booking => (
-                  <tr key={booking.id} className="hover:bg-gray-50">
+                  <tr key={booking.id} className={`hover:bg-gray-50 ${!booking.hasCompleteData ? 'bg-red-50' : ''}`}>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{booking.guestName}</p>
+                      <div className="flex items-center gap-2">
+                        {!booking.hasCompleteData && (
+                          <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" title="Dati ospiti incompleti" />
+                        )}
+                        <p className="font-medium text-gray-900">{booking.guestName}</p>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {booking.property?.name || 'N/A'}
@@ -436,8 +475,15 @@ export const TouristTax = () => {
                     <td className="px-4 py-3 text-center text-gray-600">
                       {booking.numberOfGuests}
                     </td>
-                    <td className="px-4 py-3 text-center font-bold text-blue-600">
-                      {booking.eligibleGuests}
+                    <td className="px-4 py-3 text-center">
+                      <span className={`font-bold ${booking.hasCompleteData ? 'text-blue-600' : 'text-red-500'}`}>
+                        {booking.eligibleGuests}
+                      </span>
+                      {!booking.hasCompleteData && (
+                        <span className="text-xs text-red-500 block">
+                          ({booking.missingGuestData} senza dati)
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-green-600">
                       €{booking.taxAmount.toFixed(2)}
