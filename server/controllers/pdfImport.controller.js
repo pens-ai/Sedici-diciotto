@@ -280,11 +280,11 @@ export const importBookingFromPDF = async (req, res, next) => {
       },
     });
 
-    // Build check-in URL
+    // Build check-in URL - same logic as checkin.controller.js
     const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
     const host = req.get('x-forwarded-host') || req.get('host');
     const baseUrl = process.env.FRONTEND_URL || `${protocol}://${host}`;
-    const checkInUrl = `${baseUrl}/guest-checkin/${checkInToken}`;
+    const checkInUrl = `${baseUrl}/checkin/${checkInToken}`;
 
     res.json({
       success: true,
