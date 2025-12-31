@@ -660,9 +660,6 @@ export const generateRoss1000Xml = async (req, res, next) => {
         <tipoturismo>${tipoTurismo}</tipoturismo>
         <mezzotrasporto>${mezzoTrasporto}</mezzotrasporto>
         <canaleprenotazione>${canalePrenotazione}</canaleprenotazione>
-        <titolostudio></titolostudio>
-        <professione></professione>
-        <esenzioneimposta></esenzioneimposta>
       </arrivo>`;
     });
 
