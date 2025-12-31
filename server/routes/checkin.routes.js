@@ -13,6 +13,8 @@ import {
   generateRoss1000Xml,
   getReferenceData,
   resetGuestData,
+  searchComuni,
+  getComuneByCode,
 } from '../controllers/checkin.controller.js';
 
 const router = Router();
@@ -30,6 +32,12 @@ router.post('/public/:token/guests/:guestId/document', uploadDocument.single('do
 
 // Get reference data (countries, provinces, document types)
 router.get('/reference-data', getReferenceData);
+
+// Search Italian comuni (for autocomplete)
+router.get('/comuni', searchComuni);
+
+// Get comune by ISTAT code
+router.get('/comuni/:codice', getComuneByCode);
 
 // ============ AUTHENTICATED ROUTES (for hosts) ============
 

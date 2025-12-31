@@ -19,6 +19,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { getBookingByToken, submitGuestData } from '../api/checkin.api';
+import ComuneAutocomplete from '../components/ComuneAutocomplete';
 
 // Translations object
 const translations = {
@@ -687,32 +688,29 @@ export const GuestCheckIn = () => {
                           <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                             {t.birthCity} *
                           </label>
-                          <input
-                            type="text"
-                            required
+                          <ComuneAutocomplete
                             value={guest.birthCity}
-                            onChange={(e) => updateGuest(index, 'birthCity', e.target.value)}
+                            onChange={(codice, nome, provincia) => {
+                              updateGuest(index, 'birthCity', codice);
+                              if (provincia) {
+                                updateGuest(index, 'birthProvince', provincia);
+                              }
+                            }}
                             placeholder={t.placeholderCity}
-                            className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            required
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                            {t.province} *
+                            {t.province}
                           </label>
-                          <select
-                            required
+                          <input
+                            type="text"
+                            readOnly
                             value={guest.birthProvince}
-                            onChange={(e) => updateGuest(index, 'birthProvince', e.target.value)}
-                            className="w-full px-2 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                          >
-                            <option value="">--</option>
-                            {provinces.map((p) => (
-                              <option key={p} value={p}>
-                                {p}
-                              </option>
-                            ))}
-                          </select>
+                            placeholder="--"
+                            className="w-full px-2 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-600"
+                          />
                         </div>
                       </div>
                     )}
@@ -780,32 +778,29 @@ export const GuestCheckIn = () => {
                           <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                             {t.residenceCity} *
                           </label>
-                          <input
-                            type="text"
-                            required
+                          <ComuneAutocomplete
                             value={guest.residenceCity}
-                            onChange={(e) => updateGuest(index, 'residenceCity', e.target.value)}
+                            onChange={(codice, nome, provincia) => {
+                              updateGuest(index, 'residenceCity', codice);
+                              if (provincia) {
+                                updateGuest(index, 'residenceProvince', provincia);
+                              }
+                            }}
                             placeholder={t.placeholderCity}
-                            className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            required
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                            {t.residenceProvince} *
+                            {t.residenceProvince}
                           </label>
-                          <select
-                            required
+                          <input
+                            type="text"
+                            readOnly
                             value={guest.residenceProvince}
-                            onChange={(e) => updateGuest(index, 'residenceProvince', e.target.value)}
-                            className="w-full px-2 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                          >
-                            <option value="">--</option>
-                            {provinces.map((p) => (
-                              <option key={p} value={p}>
-                                {p}
-                              </option>
-                            ))}
-                          </select>
+                            placeholder="--"
+                            className="w-full px-2 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-600"
+                          />
                         </div>
                       </div>
                     ) : (
@@ -888,13 +883,11 @@ export const GuestCheckIn = () => {
                               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                                 {t.documentIssueCity} *
                               </label>
-                              <input
-                                type="text"
-                                required
+                              <ComuneAutocomplete
                                 value={guest.documentIssueCity}
-                                onChange={(e) => updateGuest(index, 'documentIssueCity', e.target.value)}
+                                onChange={(codice) => updateGuest(index, 'documentIssueCity', codice)}
                                 placeholder={t.placeholderCity}
-                                className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                required
                               />
                             </div>
                             <div>

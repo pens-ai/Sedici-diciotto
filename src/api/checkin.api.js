@@ -27,6 +27,21 @@ export const getReferenceData = async () => {
   return response.data;
 };
 
+// Search Italian comuni (for autocomplete)
+export const searchComuni = async (query, provincia = null) => {
+  const params = new URLSearchParams();
+  if (query) params.append('q', query);
+  if (provincia) params.append('provincia', provincia);
+  const response = await api.get(`/checkin/comuni?${params.toString()}`);
+  return response.data;
+};
+
+// Get comune by ISTAT code
+export const getComuneByCode = async (codice) => {
+  const response = await api.get(`/checkin/comuni/${codice}`);
+  return response.data;
+};
+
 // ============ AUTHENTICATED API (host only) ============
 
 export const generateCheckInToken = async (bookingId) => {

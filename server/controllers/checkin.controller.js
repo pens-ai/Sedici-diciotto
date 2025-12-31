@@ -3,6 +3,26 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs/promises';
 import { format } from 'date-fns';
+import { fileURLToPath } from 'url';
+
+// Load Italian comuni data
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+let comuniData = null;
+
+const loadComuni = async () => {
+  if (!comuniData) {
+    try {
+      const filePath = path.join(__dirname, '../data/comuni.json');
+      const data = await fs.readFile(filePath, 'utf-8');
+      comuniData = JSON.parse(data);
+    } catch (err) {
+      console.error('Error loading comuni data:', err);
+      comuniData = { comuni: [] };
+    }
+  }
+  return comuniData.comuni;
+};
 
 // ============ CONSTANTS FOR ALLOGGIATI WEB ============
 
@@ -549,6 +569,56 @@ export const getReferenceData = async (req, res, next) => {
       mezziTrasporto: MEZZI_TRASPORTO,
       canaliPrenotazione: CANALI_PRENOTAZIONE,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============ SEARCH ITALIAN COMUNI ============
+
+export const searchComuni = async (req, res, next) => {
+  try {
+    const { q, provincia } = req.query;
+    const comuni = await loadComuni();
+
+    let results = comuni;
+
+    // Filter by search query
+    if (q && q.length >= 2) {
+      const searchTerm = q.toUpperCase();
+      results = results.filter(c =>
+        c.nome.includes(searchTerm) ||
+        c.provincia.includes(searchTerm)
+      );
+    }
+
+    // Filter by provincia
+    if (provincia) {
+      results = results.filter(c => c.provincia === provincia.toUpperCase());
+    }
+
+    // Limit results
+    results = results.slice(0, 50);
+
+    res.json(results);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get comune by ISTAT code
+export const getComuneByCode = async (req, res, next) => {
+  try {
+    const { codice } = req.params;
+    const comuni = await loadComuni();
+
+    const comune = comuni.find(c => c.codice === codice);
+
+    if (!comune) {
+      return res.status(404).json({ error: 'Comune non trovato' });
+    }
+
+    res.json(comune);
   } catch (error) {
     next(error);
   }
