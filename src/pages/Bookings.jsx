@@ -91,8 +91,10 @@ export const Bookings = () => {
   });
 
   const { data: calendarBlocks = [] } = useQuery({
-    queryKey: ['calendarBlocks'],
-    queryFn: bookingsApi.getCalendarBlocks,
+    queryKey: ['calendarBlocks', filterProperty],
+    queryFn: () => bookingsApi.getCalendarBlocks({
+      propertyId: filterProperty || undefined,
+    }),
   });
 
   const bookings = bookingsData?.data || [];
