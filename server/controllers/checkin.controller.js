@@ -459,19 +459,36 @@ export const generateAlloggiatiTxt = async (req, res, next) => {
     const arrivalDate = format(new Date(booking.checkIn), 'dd/MM/yyyy');
     const nights = booking.nights.toString().padStart(2, '0');
 
+    // Helper to normalize country code to 9-digit ISTAT format
+    const normalizeCountryCode = (code) => {
+      if (!code) return '100000100'; // Default Italy
+      // If already 9 digits, return as-is
+      if (code.length === 9) return code;
+      // If 3 digits (old format), convert to 9-digit format
+      if (code.length <= 3) {
+        return code.padStart(3, '0') + '000100';
+      }
+      return code.padEnd(9);
+    };
+
+    // Helper to check if country is Italy
+    const isItalyCode = (code) => {
+      return code === '100' || code === '100000100';
+    };
+
     booking.guests.forEach((guest, index) => {
-      // Record type: 16 = single guest, 17 = family head, 18 = family member, 19 = group head, 20 = group member
+      // Record type: 16 = single, 17 = capofamiglia, 18 = capogruppo, 19 = familiare, 20 = membro gruppo
       let recordType = '16'; // Default: single guest
       if (booking.guests.length > 1) {
         if (guest.isMainGuest) {
-          recordType = booking.numberOfGuests > 5 ? '19' : '17'; // Group or family head
+          recordType = booking.numberOfGuests > 5 ? '18' : '17'; // Capogruppo (18) or Capofamiglia (17)
         } else {
-          recordType = booking.numberOfGuests > 5 ? '20' : '18'; // Group or family member
+          recordType = booking.numberOfGuests > 5 ? '20' : '19'; // Membro gruppo (20) or Familiare (19)
         }
       }
 
       const birthDate = guest.birthDate ? format(new Date(guest.birthDate), 'dd/MM/yyyy') : '          ';
-      const isItalian = guest.birthCountry === '100';
+      const isItalian = isItalyCode(guest.birthCountry);
 
       // Build the line according to Alloggiati Web format
       let line = '';
@@ -492,18 +509,19 @@ export const generateAlloggiatiTxt = async (req, res, next) => {
         line += '  ';                                                   // Provincia vuota (2)
       }
 
-      line += (guest.birthCountry || '100').padEnd(9);                 // Stato nascita ISTAT (9)
-      line += (guest.citizenship || '100').padEnd(9);                  // Cittadinanza ISTAT (9)
+      line += normalizeCountryCode(guest.birthCountry);                // Stato nascita ISTAT (9)
+      line += normalizeCountryCode(guest.citizenship);                 // Cittadinanza ISTAT (9)
 
       // Documento (solo per capofamiglia/capogruppo o singoli)
       if (guest.isMainGuest || recordType === '16') {
         line += (guest.documentType || 'IDENT').padEnd(5);             // Tipo documento (5)
         line += (guest.documentNumber || '').toUpperCase().padEnd(20); // Numero documento (20)
         // Luogo rilascio: usa documentIssueCity per doc italiani, altrimenti documentIssueCountry
-        const issueLocation = guest.documentIssueCountry === '100'
-          ? (guest.documentIssueCity || '')
-          : (guest.documentIssueCountry || '');
-        line += issueLocation.padEnd(9);                               // Luogo rilascio ISTAT (9)
+        const isItalianDoc = isItalyCode(guest.documentIssueCountry);
+        const issueLocation = isItalianDoc
+          ? (guest.documentIssueCity || '').padEnd(9)
+          : normalizeCountryCode(guest.documentIssueCountry);
+        line += issueLocation;                                         // Luogo rilascio ISTAT (9)
       } else {
         line += '     ';                                                // Tipo doc vuoto (5)
         line += '                    ';                                 // Numero doc vuoto (20)
