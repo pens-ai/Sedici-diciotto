@@ -10,6 +10,7 @@ import {
   confirmGuest,
   confirmAllGuests,
   generateAlloggiatiTxt,
+  generateRoss1000Xml,
   getReferenceData,
   resetGuestData,
 } from '../controllers/checkin.controller.js';
@@ -46,6 +47,9 @@ router.put('/bookings/:bookingId/confirm-all', authenticate, confirmAllGuests);
 
 // Generate Alloggiati Web TXT file
 router.get('/bookings/:bookingId/alloggiati', authenticate, generateAlloggiatiTxt);
+
+// Generate ROSS1000 XML file (SIT Basilicata)
+router.get('/bookings/:bookingId/ross1000', authenticate, generateRoss1000Xml);
 
 // Reset guest data (delete all guests and reopen link)
 router.delete('/bookings/:bookingId/guests', authenticate, resetGuestData);

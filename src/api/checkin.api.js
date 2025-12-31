@@ -56,6 +56,23 @@ export const downloadAlloggiatiTxt = async (bookingId) => {
   return response.data;
 };
 
+// Download ROSS1000 XML for SIT Basilicata
+export const downloadRoss1000Xml = async (bookingId, options = {}) => {
+  const params = new URLSearchParams();
+  if (options.codiceStruttura) params.append('codiceStruttura', options.codiceStruttura);
+  if (options.tipoTurismo) params.append('tipoTurismo', options.tipoTurismo);
+  if (options.mezzoTrasporto) params.append('mezzoTrasporto', options.mezzoTrasporto);
+  if (options.canalePrenotazione) params.append('canalePrenotazione', options.canalePrenotazione);
+
+  const queryString = params.toString();
+  const url = `/checkin/bookings/${bookingId}/ross1000${queryString ? `?${queryString}` : ''}`;
+
+  const response = await api.get(url, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
 export const resetGuestData = async (bookingId) => {
   const response = await api.delete(`/checkin/bookings/${bookingId}/guests`);
   return response.data;

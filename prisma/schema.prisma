@@ -284,15 +284,30 @@ model GuestRegistryEntry {
   birthCountry     String?   // Codice ISTAT nazione (100 = Italia)
   citizenship      String?   // Codice ISTAT cittadinanza
 
-  // Documento
-  documentType     String?   // IDENT, PASOR, PATEN, etc.
-  documentNumber   String?
-  documentIssuer   String?   // Codice ISTAT comune/stato che ha rilasciato
-  documentExpiry   DateTime?
+  // Residenza
+  residenceAddress  String?   // Indirizzo di residenza
+  residenceCity     String?   // Comune di residenza
+  residenceProvince String?   // Provincia di residenza (per italiani)
+  residenceCountry  String?   // Stato di residenza (codice ISTAT)
+
+  // Documento - Tipi: IDENT (Carta identità), PASOR (Passaporto), PATEN (Patente guida),
+  // PANNA (Patente nautica), PARM (Porto d'armi), TESAR (Tessera AT), TESTM (Tess. Min. Trasp.),
+  // CODFI (Codice fiscale), ALTRO (Altro documento)
+  documentType       String?
+  documentNumber     String?
+  documentIssueCountry String?  // Stato di rilascio documento
+  documentIssueCity    String?  // Comune di rilascio documento
+  documentIssuer     String?   // Ente che ha rilasciato (legacy, per compatibilità)
+  documentExpiry     DateTime?
 
   // Foto documenti
   documentFrontUrl String?
   documentBackUrl  String?
+
+  // Dati per ROSS1000/SIT Basilicata (XML)
+  tipoTurismo       String?   // Tipo turismo (ENOGASTRONOMICO, BALNEARE, etc.)
+  mezzoTrasporto    String?   // Mezzo trasporto (AUTO, AEREO, TRENO, etc.)
+  canalePrenotazione String?  // Canale prenotazione (DIRETTA WEB, INDIRETTA WEB, etc.)
 
   // Stato
   isMainGuest      Boolean   @default(false) // Capofamiglia/capogruppo

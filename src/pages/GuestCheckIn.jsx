@@ -47,11 +47,19 @@ const translations = {
     birthCityForeign: 'Città di nascita',
     province: 'Provincia',
     citizenship: 'Cittadinanza',
+    residenceSection: 'Residenza',
+    residenceCity: 'Comune',
+    residenceProvince: 'Provincia',
+    residenceCountry: 'Stato',
     documentSection: 'Documento di identità',
     documentType: 'Tipo documento',
     documentNumber: 'Numero documento',
-    issuedBy: 'Rilasciato da',
+    documentIssueCountry: 'Stato rilascio',
+    documentIssueCity: 'Comune rilascio',
     expiryDate: 'Scadenza',
+    tourismTypeSection: 'Informazioni soggiorno',
+    tourismType: 'Tipo turismo',
+    transportMode: 'Mezzo di trasporto',
     addGuest: 'Aggiungi ospite',
     submit: 'Invia dati',
     submitting: 'Invio in corso...',
@@ -89,11 +97,19 @@ const translations = {
     birthCityForeign: 'City of Birth',
     province: 'Province',
     citizenship: 'Citizenship',
+    residenceSection: 'Residence',
+    residenceCity: 'City',
+    residenceProvince: 'Province',
+    residenceCountry: 'Country',
     documentSection: 'Identity Document',
     documentType: 'Document Type',
     documentNumber: 'Document Number',
-    issuedBy: 'Issued by',
+    documentIssueCountry: 'Issue Country',
+    documentIssueCity: 'Issue City',
     expiryDate: 'Expiry Date',
+    tourismTypeSection: 'Stay Information',
+    tourismType: 'Tourism Type',
+    transportMode: 'Transport Mode',
     addGuest: 'Add guest',
     submit: 'Submit data',
     submitting: 'Submitting...',
@@ -131,11 +147,19 @@ const translations = {
     birthCityForeign: 'Ciudad de nacimiento',
     province: 'Provincia',
     citizenship: 'Ciudadanía',
+    residenceSection: 'Residencia',
+    residenceCity: 'Ciudad',
+    residenceProvince: 'Provincia',
+    residenceCountry: 'País',
     documentSection: 'Documento de identidad',
     documentType: 'Tipo de documento',
     documentNumber: 'Número de documento',
-    issuedBy: 'Expedido por',
+    documentIssueCountry: 'País de emisión',
+    documentIssueCity: 'Ciudad de emisión',
     expiryDate: 'Fecha de vencimiento',
+    tourismTypeSection: 'Información de estancia',
+    tourismType: 'Tipo de turismo',
+    transportMode: 'Medio de transporte',
     addGuest: 'Añadir huésped',
     submit: 'Enviar datos',
     submitting: 'Enviando...',
@@ -173,10 +197,15 @@ const translations = {
     birthCityForeign: 'Ville de naissance',
     province: 'Province',
     citizenship: 'Citoyenneté',
+    residenceSection: 'Résidence',
+    residenceCity: 'Ville',
+    residenceProvince: 'Province',
+    residenceCountry: 'Pays',
     documentSection: "Document d'identité",
     documentType: 'Type de document',
     documentNumber: 'Numéro de document',
-    issuedBy: 'Délivré par',
+    documentIssueCountry: 'Pays de délivrance',
+    documentIssueCity: 'Ville de délivrance',
     expiryDate: "Date d'expiration",
     addGuest: 'Ajouter un invité',
     submit: 'Envoyer les données',
@@ -215,10 +244,15 @@ const translations = {
     birthCityForeign: '出生城市',
     province: '省份',
     citizenship: '国籍',
+    residenceSection: '居住地',
+    residenceCity: '城市',
+    residenceProvince: '省份',
+    residenceCountry: '国家',
     documentSection: '身份证件',
     documentType: '证件类型',
     documentNumber: '证件号码',
-    issuedBy: '签发机关',
+    documentIssueCountry: '签发国家',
+    documentIssueCity: '签发城市',
     expiryDate: '有效期至',
     addGuest: '添加客人',
     submit: '提交信息',
@@ -257,10 +291,15 @@ const translations = {
     birthCityForeign: 'مدينة الميلاد',
     province: 'المقاطعة',
     citizenship: 'الجنسية',
+    residenceSection: 'مكان الإقامة',
+    residenceCity: 'المدينة',
+    residenceProvince: 'المقاطعة',
+    residenceCountry: 'الدولة',
     documentSection: 'وثيقة الهوية',
     documentType: 'نوع الوثيقة',
     documentNumber: 'رقم الوثيقة',
-    issuedBy: 'صادرة عن',
+    documentIssueCountry: 'دولة الإصدار',
+    documentIssueCity: 'مدينة الإصدار',
     expiryDate: 'تاريخ الانتهاء',
     addGuest: 'إضافة ضيف',
     submit: 'إرسال البيانات',
@@ -285,9 +324,13 @@ const EMPTY_GUEST = {
   birthProvince: '',
   birthCountry: '100',
   citizenship: '100',
+  residenceCity: '',
+  residenceProvince: '',
+  residenceCountry: '100',
   documentType: 'IDENT',
   documentNumber: '',
-  documentIssuer: '',
+  documentIssueCountry: '100',
+  documentIssueCity: '',
   documentExpiry: '',
 };
 
@@ -336,9 +379,13 @@ export const GuestCheckIn = () => {
           birthProvince: g.birthProvince || '',
           birthCountry: g.birthCountry || '100',
           citizenship: g.citizenship || '100',
+          residenceCity: g.residenceCity || '',
+          residenceProvince: g.residenceProvince || '',
+          residenceCountry: g.residenceCountry || '100',
           documentType: g.documentType || 'IDENT',
           documentNumber: g.documentNumber || '',
-          documentIssuer: g.documentIssuer || '',
+          documentIssueCountry: g.documentIssueCountry || '100',
+          documentIssueCity: g.documentIssueCity || '',
           documentExpiry: g.documentExpiry ? format(new Date(g.documentExpiry), 'yyyy-MM-dd') : '',
         }))
       );
@@ -704,6 +751,78 @@ export const GuestCheckIn = () => {
                       </select>
                     </div>
 
+                    {/* Residenza */}
+                    <div className="border-t-2 border-gray-100 pt-4 mt-4">
+                      <h4 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">{t.residenceSection}</h4>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        {t.residenceCountry} *
+                      </label>
+                      <select
+                        required
+                        value={guest.residenceCountry}
+                        onChange={(e) => updateGuest(index, 'residenceCountry', e.target.value)}
+                        className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                      >
+                        {countries.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {isItalian(guest.residenceCountry) ? (
+                      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                        <div className="col-span-2">
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            {t.residenceCity} *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={guest.residenceCity}
+                            onChange={(e) => updateGuest(index, 'residenceCity', e.target.value)}
+                            placeholder={t.placeholderCity}
+                            className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            {t.residenceProvince} *
+                          </label>
+                          <select
+                            required
+                            value={guest.residenceProvince}
+                            onChange={(e) => updateGuest(index, 'residenceProvince', e.target.value)}
+                            className="w-full px-2 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                          >
+                            <option value="">--</option>
+                            {provinces.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                          {t.residenceCity} *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={guest.residenceCity}
+                          onChange={(e) => updateGuest(index, 'residenceCity', e.target.value)}
+                          className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
+                    )}
+
                     {/* Documento (solo per capofamiglia) */}
                     {index === 0 && (
                       <>
@@ -743,31 +862,79 @@ export const GuestCheckIn = () => {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                              {t.issuedBy}
-                            </label>
-                            <input
-                              type="text"
-                              value={guest.documentIssuer}
-                              onChange={(e) => updateGuest(index, 'documentIssuer', e.target.value)}
-                              placeholder={t.placeholderIssuer}
-                              className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                              {t.expiryDate}
-                            </label>
-                            <input
-                              type="date"
-                              value={guest.documentExpiry}
-                              onChange={(e) => updateGuest(index, 'documentExpiry', e.target.value)}
-                              className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            />
-                          </div>
+                        {/* Document Issue Country */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            {t.documentIssueCountry} *
+                          </label>
+                          <select
+                            required
+                            value={guest.documentIssueCountry}
+                            onChange={(e) => updateGuest(index, 'documentIssueCountry', e.target.value)}
+                            className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                          >
+                            {countries.map((c) => (
+                              <option key={c.code} value={c.code}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
                         </div>
+
+                        {/* Document Issue City - with province for Italian documents */}
+                        {isItalian(guest.documentIssueCountry) ? (
+                          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                            <div className="col-span-2">
+                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                {t.documentIssueCity} *
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                value={guest.documentIssueCity}
+                                onChange={(e) => updateGuest(index, 'documentIssueCity', e.target.value)}
+                                placeholder={t.placeholderCity}
+                                className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                {t.expiryDate}
+                              </label>
+                              <input
+                                type="date"
+                                value={guest.documentExpiry}
+                                onChange={(e) => updateGuest(index, 'documentExpiry', e.target.value)}
+                                className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                {t.documentIssueCity}
+                              </label>
+                              <input
+                                type="text"
+                                value={guest.documentIssueCity}
+                                onChange={(e) => updateGuest(index, 'documentIssueCity', e.target.value)}
+                                className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                {t.expiryDate}
+                              </label>
+                              <input
+                                type="date"
+                                value={guest.documentExpiry}
+                                onChange={(e) => updateGuest(index, 'documentExpiry', e.target.value)}
+                                className="w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

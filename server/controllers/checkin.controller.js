@@ -6,13 +6,17 @@ import { format } from 'date-fns';
 
 // ============ CONSTANTS FOR ALLOGGIATI WEB ============
 
-// Document types for Alloggiati Web
+// Document types for Alloggiati Web / Turiweb APT Basilicata
 export const DOCUMENT_TYPES = {
   IDENT: { code: 'IDENT', label: 'Carta d\'Identità' },
   PASOR: { code: 'PASOR', label: 'Passaporto' },
   PATEN: { code: 'PATEN', label: 'Patente di Guida' },
-  PORMA: { code: 'PATEN', label: 'Porto d\'Armi' },
-  TESMI: { code: 'TESMI', label: 'Tessera Ministero' },
+  PANNA: { code: 'PANNA', label: 'Patente Nautica' },
+  PARM: { code: 'PARM', label: 'Porto d\'Armi' },
+  TESAR: { code: 'TESAR', label: 'Tessera AT/BT' },
+  TESTM: { code: 'TESTM', label: 'Tess. Min. Trasporti' },
+  CODFI: { code: 'CODFI', label: 'Codice Fiscale' },
+  ALTRO: { code: 'ALTRO', label: 'Altro Documento' },
 };
 
 // Common nationalities (ISTAT codes)
@@ -64,6 +68,65 @@ export const PROVINCES = [
   'TA', 'TE', 'TN', 'TO', 'TP', 'TR', 'TS', 'TV', 'UD', 'VA',
   'VB', 'VC', 'VE', 'VI', 'VR', 'VS', 'VT', 'VV',
 ];
+
+// ============ CONSTANTS FOR ROSS1000/SIT BASILICATA (XML) ============
+
+// Tourism types (Tipo Turismo) - Required for ROSS1000
+export const TIPI_TURISMO = [
+  { code: 'CULTURALE', label: 'Culturale' },
+  { code: 'BALNEARE', label: 'Balneare' },
+  { code: 'CONGRESSUALE_AFFARI', label: 'Congressuale/Affari' },
+  { code: 'FIERISTICO', label: 'Fieristico' },
+  { code: 'SPORTIVO_FITNESS', label: 'Sportivo/Fitness' },
+  { code: 'SCOLASTICO', label: 'Scolastico' },
+  { code: 'RELIGIOSO', label: 'Religioso' },
+  { code: 'SOCIALE', label: 'Sociale' },
+  { code: 'PARCHI_TEMATICI', label: 'Parchi Tematici' },
+  { code: 'TERMALE', label: 'Termale/Trattamenti salute' },
+  { code: 'ENOGASTRONOMICO', label: 'Enogastronomico' },
+  { code: 'CICLOTURISMO', label: 'Cicloturismo' },
+  { code: 'ESCURSIONISTICO', label: 'Escursionistico/Naturalistico' },
+  { code: 'ALTRO', label: 'Altro motivo' },
+  { code: 'NON_SPECIFICATO', label: 'Non specificato' },
+];
+
+// Transport modes (Mezzo di Trasporto) - Required for ROSS1000
+export const MEZZI_TRASPORTO = [
+  { code: 'AUTO', label: 'Auto' },
+  { code: 'AEREO', label: 'Aereo' },
+  { code: 'AEREO_PULLMAN', label: 'Aereo+Pullman' },
+  { code: 'AEREO_NAVETTA', label: 'Aereo+Navetta/Taxi/Auto' },
+  { code: 'AEREO_TRENO', label: 'Aereo+Treno' },
+  { code: 'TRENO', label: 'Treno' },
+  { code: 'PULLMAN', label: 'Pullman' },
+  { code: 'CARAVAN', label: 'Caravan/Autocaravan' },
+  { code: 'NAVE', label: 'Barca/Nave/Traghetto' },
+  { code: 'MOTO', label: 'Moto' },
+  { code: 'BICICLETTA', label: 'Bicicletta' },
+  { code: 'A_PIEDI', label: 'A piedi' },
+  { code: 'ALTRO', label: 'Altro mezzo' },
+  { code: 'NON_SPECIFICATO', label: 'Non Specificato' },
+];
+
+// Booking channels (Canale di Prenotazione)
+export const CANALI_PRENOTAZIONE = [
+  { code: 'DIRETTA_TRADIZIONALE', label: 'Diretta tradizionale' },
+  { code: 'DIRETTA_WEB', label: 'Diretta web' },
+  { code: 'INDIRETTA_TRADIZIONALE', label: 'Indiretta tradizionale' },
+  { code: 'INDIRETTA_WEB', label: 'Indiretta web' },
+  { code: 'ALTRO', label: 'Altro canale' },
+  { code: 'NON_SPECIFICATO', label: 'Non specificato' },
+];
+
+// ISTAT country codes mapping (short -> full format for ROSS1000)
+// ROSS1000 uses format 100000XXX where XXX is the short ISTAT code
+export const getFullIstatCode = (shortCode) => {
+  if (!shortCode) return '';
+  // Italia is special: 100 -> 100000100
+  if (shortCode === '100') return '100000100';
+  // Other countries: pad to 9 digits with 100000 prefix
+  return `100000${shortCode.padStart(3, '0')}`;
+};
 
 // ============ GENERATE CHECK-IN TOKEN ============
 
@@ -151,6 +214,9 @@ export const getBookingByToken = async (req, res, next) => {
       documentTypes: Object.values(DOCUMENT_TYPES),
       countries: COUNTRIES,
       provinces: PROVINCES,
+      tipiTurismo: TIPI_TURISMO,
+      mezziTrasporto: MEZZI_TRASPORTO,
+      canaliPrenotazione: CANALI_PRENOTAZIONE,
     });
   } catch (error) {
     next(error);
@@ -194,10 +260,17 @@ export const submitGuestData = async (req, res, next) => {
             birthProvince: guest.birthProvince,
             birthCountry: guest.birthCountry,
             citizenship: guest.citizenship,
+            residenceCity: guest.residenceCity,
+            residenceProvince: guest.residenceProvince,
+            residenceCountry: guest.residenceCountry,
             documentType: guest.documentType,
             documentNumber: guest.documentNumber,
-            documentIssuer: guest.documentIssuer,
+            documentIssueCountry: guest.documentIssueCountry,
+            documentIssueCity: guest.documentIssueCity,
             documentExpiry: guest.documentExpiry ? new Date(guest.documentExpiry) : null,
+            tipoTurismo: guest.tipoTurismo,
+            mezzoTrasporto: guest.mezzoTrasporto,
+            canalePrenotazione: guest.canalePrenotazione,
             isMainGuest: index === 0,
             isConfirmed: false,
           },
@@ -406,7 +479,11 @@ export const generateAlloggiatiTxt = async (req, res, next) => {
       if (guest.isMainGuest || recordType === '16') {
         line += (guest.documentType || 'IDENT').padEnd(5);             // Tipo documento (5)
         line += (guest.documentNumber || '').toUpperCase().padEnd(20); // Numero documento (20)
-        line += (guest.documentIssuer || '').padEnd(9);                // Luogo rilascio ISTAT (9)
+        // Luogo rilascio: usa documentIssueCity per doc italiani, altrimenti documentIssueCountry
+        const issueLocation = guest.documentIssueCountry === '100'
+          ? (guest.documentIssueCity || '')
+          : (guest.documentIssueCountry || '');
+        line += issueLocation.padEnd(9);                               // Luogo rilascio ISTAT (9)
       } else {
         line += '     ';                                                // Tipo doc vuoto (5)
         line += '                    ';                                 // Numero doc vuoto (20)
@@ -468,7 +545,138 @@ export const getReferenceData = async (req, res, next) => {
       documentTypes: Object.values(DOCUMENT_TYPES),
       countries: COUNTRIES,
       provinces: PROVINCES,
+      tipiTurismo: TIPI_TURISMO,
+      mezziTrasporto: MEZZI_TRASPORTO,
+      canaliPrenotazione: CANALI_PRENOTAZIONE,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============ GENERATE ROSS1000 XML (SIT BASILICATA) ============
+
+export const generateRoss1000Xml = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    const {
+      codiceStruttura,
+      prodotto,
+      tipoTurismo = 'BALNEARE', // Default per case vacanza
+      mezzoTrasporto = 'AUTO',  // La maggior parte degli ospiti arriva in auto
+      canalePrenotazione = 'INDIRETTA_WEB' // Default per OTA (Booking, Airbnb)
+    } = req.query;
+
+    const booking = await prisma.booking.findFirst({
+      where: { id: bookingId, userId: req.userId },
+      include: {
+        property: true,
+        guests: {
+          where: { isConfirmed: true },
+          orderBy: { isMainGuest: 'desc' },
+        },
+      },
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Prenotazione non trovata' });
+    }
+
+    if (booking.guests.length === 0) {
+      return res.status(400).json({ error: 'Nessun ospite confermato' });
+    }
+
+    // Generate XML content in ROSS1000 format
+    const arrivalDate = format(new Date(booking.checkIn), 'yyyyMMdd');
+    const mainGuest = booking.guests.find(g => g.isMainGuest) || booking.guests[0];
+
+    // Determine guest type (tipoalloggiato)
+    // 16 = single, 17 = family head, 18 = family member, 19 = group head (>5), 20 = group member (>5)
+    const getGuestType = (guest, totalGuests) => {
+      if (totalGuests === 1) return '16'; // Single guest
+      if (totalGuests > 5) {
+        return guest.isMainGuest ? '19' : '20'; // Group
+      }
+      return guest.isMainGuest ? '17' : '18'; // Family
+    };
+
+    // Build XML structure
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<movimenti>
+  <codice>${codiceStruttura || 'INSERIRE_CODICE'}</codice>
+  <prodotto>${prodotto || 'GestionaleCaseVacanza'}</prodotto>
+  <movimento>
+    <data>${arrivalDate}</data>
+    <struttura>
+      <apertura>SI</apertura>
+      <camereoccupate>1</camereoccupate>
+      <cameredisponibili>${booking.property?.beds || 1}</cameredisponibili>
+      <lettidisponibili>${booking.property?.beds || booking.numberOfGuests}</lettidisponibili>
+    </struttura>
+    <arrivi>`;
+
+    // Add each guest as an arrivo
+    booking.guests.forEach((guest, index) => {
+      const guestType = getGuestType(guest, booking.guests.length);
+      const birthDate = guest.birthDate ? format(new Date(guest.birthDate), 'yyyyMMdd') : '';
+      const isItalianBirth = guest.birthCountry === '100';
+      const isItalianResidence = guest.residenceCountry === '100';
+
+      // Convert short ISTAT codes to full format
+      const cittadinanza = getFullIstatCode(guest.citizenship);
+      const statoResidenza = getFullIstatCode(guest.residenceCountry);
+      const statoNascita = getFullIstatCode(guest.birthCountry);
+
+      // For residence location: use comune code for Italians, NUTS code or city name for foreigners
+      let luogoResidenza = '';
+      if (isItalianResidence && guest.residenceCity) {
+        // Italian: should be ISTAT comune code (403XXXXXX format)
+        // For now, just use the city name - user should input proper code
+        luogoResidenza = guest.residenceCity;
+      } else if (guest.residenceCity) {
+        luogoResidenza = guest.residenceCity;
+      }
+
+      // For birth location
+      let comuneNascita = '';
+      if (isItalianBirth && guest.birthCity) {
+        comuneNascita = guest.birthCity;
+      }
+
+      xml += `
+      <arrivo>
+        <idswh>${booking.id.substring(0, 20)}_${index}</idswh>
+        <tipoalloggiato>${guestType}</tipoalloggiato>
+        <idcapo>${guest.isMainGuest ? '' : booking.id.substring(0, 20) + '_0'}</idcapo>
+        <cognome>${(guest.lastName || '').toUpperCase()}</cognome>
+        <nome>${(guest.firstName || '').toUpperCase()}</nome>
+        <sesso>${guest.sex || 'M'}</sesso>
+        <cittadinanza>${cittadinanza}</cittadinanza>
+        <statoresidenza>${statoResidenza}</statoresidenza>
+        <luogoresidenza>${luogoResidenza}</luogoresidenza>
+        <datanascita>${birthDate}</datanascita>
+        <statonascita>${statoNascita}</statonascita>
+        <comunenascita>${comuneNascita}</comunenascita>
+        <tipoturismo>${tipoTurismo}</tipoturismo>
+        <mezzotrasporto>${mezzoTrasporto}</mezzotrasporto>
+        <canaleprenotazione>${canalePrenotazione}</canaleprenotazione>
+        <titolostudio></titolostudio>
+        <professione></professione>
+        <esenzioneimposta></esenzioneimposta>
+      </arrivo>`;
+    });
+
+    xml += `
+    </arrivi>
+  </movimento>
+</movimenti>`;
+
+    // Set headers for XML file download
+    const fileName = `ross1000_${format(new Date(booking.checkIn), 'yyyyMMdd')}_${booking.guestName.replace(/\s+/g, '_')}.xml`;
+
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(xml);
   } catch (error) {
     next(error);
   }

@@ -100,6 +100,24 @@ export const Guests = () => {
     }
   };
 
+  // Download ROSS1000 XML for SIT Basilicata
+  const handleDownloadRoss1000 = async () => {
+    try {
+      const blob = await checkinApi.downloadRoss1000Xml(selectedBooking.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ross1000_${format(parseISO(selectedBooking.checkIn), 'yyyyMMdd')}_${selectedBooking.guestName.replace(/\s+/g, '_')}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('📄 File XML scaricato');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Errore durante il download');
+    }
+  };
+
   const copyToClipboard = () => {
     const url = checkInUrl || `${window.location.origin}/checkin/${guestsData?.checkInToken}`;
     navigator.clipboard.writeText(url);
@@ -499,27 +517,42 @@ export const Guests = () => {
                   </div>
 
                   {/* Actions for documents */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="space-y-3 pt-2">
+                    {/* Confirm button */}
                     {confirmedGuests < bookingGuests.length && (
                       <Button
                         onClick={() => confirmAllMutation.mutate()}
                         disabled={confirmAllMutation.isPending}
-                        className="py-3 text-base"
+                        className="w-full py-3 text-base"
                       >
                         <CheckCircle className="w-5 h-5 mr-2" />
                         {confirmAllMutation.isPending ? '⏳ Conferma...' : '✅ Conferma Tutti'}
                       </Button>
                     )}
+
+                    {/* Download buttons */}
                     {confirmedGuests > 0 && (
-                      <Button
-                        variant="secondary"
-                        onClick={handleDownloadAlloggiati}
-                        className="py-3 text-base"
-                      >
-                        <Download className="w-5 h-5 mr-2" />
-                        📄 Scarica per Questura
-                      </Button>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Button
+                          variant="secondary"
+                          onClick={handleDownloadAlloggiati}
+                          className="py-3 text-base"
+                        >
+                          <Download className="w-5 h-5 mr-2" />
+                          📄 Questura (TXT)
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={handleDownloadRoss1000}
+                          className="py-3 text-base"
+                        >
+                          <Download className="w-5 h-5 mr-2" />
+                          📄 SIT Basilicata (XML)
+                        </Button>
+                      </div>
                     )}
+
+                    {/* Reset button */}
                     <Button
                       variant="danger"
                       onClick={() => {
@@ -528,7 +561,7 @@ export const Guests = () => {
                         }
                       }}
                       disabled={resetGuestsMutation.isPending}
-                      className="py-3 text-base"
+                      className="w-full py-3 text-base"
                     >
                       <RotateCcw className="w-5 h-5 mr-2" />
                       {resetGuestsMutation.isPending ? '⏳ Eliminazione...' : '🔄 Ricomincia'}
