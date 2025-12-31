@@ -40,6 +40,7 @@ const isTaxableChannel = (booking) => {
 export const TouristTax = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedProperty, setSelectedProperty] = useState('all');
 
   const months = [
     'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
@@ -120,14 +121,47 @@ export const TouristTax = () => {
     // Calculate totals
     const totals = processedBookings.reduce((acc, booking) => ({
       totalTax: acc.totalTax + booking.taxAmount,
-      totalNights: acc.totalNights + booking.taxableNights,
-      totalGuests: acc.totalGuests + booking.eligibleGuests,
+      totalNights: acc.totalNights + booking.nights,
+      totalTaxableNights: acc.totalTaxableNights + booking.taxableNights,
+      totalAllGuests: acc.totalAllGuests + booking.numberOfGuests,
+      totalPayingGuests: acc.totalPayingGuests + booking.eligibleGuests,
       totalExempt: acc.totalExempt + booking.exemptGuests,
       totalBookings: acc.totalBookings + 1
-    }), { totalTax: 0, totalNights: 0, totalGuests: 0, totalExempt: 0, totalBookings: 0 });
+    }), { totalTax: 0, totalNights: 0, totalTaxableNights: 0, totalAllGuests: 0, totalPayingGuests: 0, totalExempt: 0, totalBookings: 0 });
 
-    return { bookings: processedBookings, totals };
+    // Get unique properties
+    const properties = [...new Map(processedBookings.map(b => [b.propertyId, { id: b.propertyId, name: b.property?.name || 'N/A' }])).values()];
+
+    return { bookings: processedBookings, totals, properties };
   }, [bookingsData, selectedYear, selectedMonth]);
+
+  // Calculate nights breakdown for selected property
+  const nightsBreakdown = useMemo(() => {
+    const filteredBookings = selectedProperty === 'all'
+      ? taxCalculation.bookings
+      : taxCalculation.bookings.filter(b => b.propertyId === selectedProperty);
+
+    const breakdown = {
+      '1': { label: '1 notte', totalGuests: 0, payingGuests: 0, exemptGuests: 0, bookings: 0 },
+      '2': { label: '2 notti', totalGuests: 0, payingGuests: 0, exemptGuests: 0, bookings: 0 },
+      '3+': { label: '3 o più notti', totalGuests: 0, payingGuests: 0, exemptGuests: 0, bookings: 0 },
+    };
+
+    filteredBookings.forEach(booking => {
+      const nights = booking.nights;
+      let category;
+      if (nights === 1) category = '1';
+      else if (nights === 2) category = '2';
+      else category = '3+';
+
+      breakdown[category].totalGuests += booking.numberOfGuests;
+      breakdown[category].payingGuests += booking.eligibleGuests;
+      breakdown[category].exemptGuests += booking.exemptGuests;
+      breakdown[category].bookings += 1;
+    });
+
+    return breakdown;
+  }, [taxCalculation.bookings, selectedProperty]);
 
   const goToPreviousMonth = () => {
     if (selectedMonth === 0) {
@@ -231,8 +265,11 @@ export const TouristTax = () => {
               <Users className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-sm text-blue-700">Ospiti Tassabili</p>
-              <p className="text-2xl font-bold text-blue-900">{taxCalculation.totals.totalGuests}</p>
+              <p className="text-sm text-blue-700">Ospiti Paganti</p>
+              <p className="text-2xl font-bold text-blue-900">
+                {taxCalculation.totals.totalPayingGuests}
+                <span className="text-sm font-normal text-blue-600 ml-1">/ {taxCalculation.totals.totalAllGuests}</span>
+              </p>
             </div>
           </div>
         </Card>
@@ -243,7 +280,7 @@ export const TouristTax = () => {
               <Moon className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-sm text-purple-700">Notti Tassate</p>
+              <p className="text-sm text-purple-700">Notti Totali</p>
               <p className="text-2xl font-bold text-purple-900">{taxCalculation.totals.totalNights}</p>
             </div>
           </div>
@@ -293,8 +330,8 @@ export const TouristTax = () => {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Canale</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Check-in</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Notti</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ospiti</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Esenti</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ospiti Totali</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ospiti Paganti</th>
                   <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Tassa</th>
                 </tr>
               </thead>
@@ -319,17 +356,14 @@ export const TouristTax = () => {
                     <td className="px-4 py-3 text-center text-gray-600">
                       {new Date(booking.checkIn).toLocaleDateString('it-IT')}
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="font-medium">{booking.taxableNights}</span>
-                      {booking.nights > MAX_NIGHTS && (
-                        <span className="text-gray-400 text-xs ml-1">/{booking.nights}</span>
-                      )}
-                    </td>
                     <td className="px-4 py-3 text-center font-medium text-gray-900">
-                      {booking.eligibleGuests}
+                      {booking.nights}
                     </td>
-                    <td className="px-4 py-3 text-center text-orange-600">
-                      {booking.exemptGuests > 0 ? booking.exemptGuests : '-'}
+                    <td className="px-4 py-3 text-center text-gray-600">
+                      {booking.numberOfGuests}
+                    </td>
+                    <td className="px-4 py-3 text-center font-bold text-blue-600">
+                      {booking.eligibleGuests}
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-green-600">
                       €{booking.taxAmount.toFixed(2)}
@@ -346,10 +380,10 @@ export const TouristTax = () => {
                     {taxCalculation.totals.totalNights}
                   </td>
                   <td className="px-4 py-3 text-center font-bold text-gray-900">
-                    {taxCalculation.totals.totalGuests}
+                    {taxCalculation.totals.totalAllGuests}
                   </td>
-                  <td className="px-4 py-3 text-center font-bold text-orange-600">
-                    {taxCalculation.totals.totalExempt > 0 ? taxCalculation.totals.totalExempt : '-'}
+                  <td className="px-4 py-3 text-center font-bold text-blue-600">
+                    {taxCalculation.totals.totalPayingGuests}
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
                     €{taxCalculation.totals.totalTax.toFixed(2)}
@@ -360,6 +394,65 @@ export const TouristTax = () => {
           </div>
         )}
       </Card>
+
+      {/* Breakdown by nights */}
+      {taxCalculation.bookings.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h3 className="text-lg font-semibold text-gray-900">Riepilogo per Numero di Notti</h3>
+            <select
+              value={selectedProperty}
+              onChange={(e) => setSelectedProperty(e.target.value)}
+              className="px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="all">Tutte le case</option>
+              {taxCalculation.properties.map(prop => (
+                <option key={prop.id} value={prop.id}>{prop.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Notti</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ospiti Totali</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ospiti Paganti</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Esenzioni</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {Object.entries(nightsBreakdown).map(([key, data]) => (
+                  <tr key={key} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-gray-900">{data.label}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center text-gray-600">{data.totalGuests}</td>
+                    <td className="px-4 py-3 text-center font-bold text-blue-600">{data.payingGuests}</td>
+                    <td className="px-4 py-3 text-center text-orange-600">
+                      {data.exemptGuests > 0 ? data.exemptGuests : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-gray-100">
+                <tr>
+                  <td className="px-4 py-3 font-semibold text-gray-700">Totale</td>
+                  <td className="px-4 py-3 text-center font-bold text-gray-900">
+                    {Object.values(nightsBreakdown).reduce((sum, d) => sum + d.totalGuests, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center font-bold text-blue-600">
+                    {Object.values(nightsBreakdown).reduce((sum, d) => sum + d.payingGuests, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center font-bold text-orange-600">
+                    {Object.values(nightsBreakdown).reduce((sum, d) => sum + d.exemptGuests, 0) || '-'}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
