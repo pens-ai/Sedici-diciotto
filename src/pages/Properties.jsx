@@ -467,25 +467,33 @@ export const Properties = () => {
                                 : 'Mai sincronizzato'}
                             </p>
                           </div>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => syncIcalMutation.mutate(property.id)}
-                              disabled={syncIcalMutation.isPending}
-                            >
-                              <RefreshCw className={`w-4 h-4 mr-2 ${syncIcalMutation.isPending ? 'animate-spin' : ''}`} />
-                              {syncIcalMutation.isPending ? 'Sincronizzazione...' : 'Sincronizza'}
-                            </Button>
-                            <button
-                              onClick={() => handleResetCalendar(property.id)}
-                              disabled={resetCalendarMutation.isPending}
-                              className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-colors text-sm font-medium disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4 inline mr-2" />
-                              {resetCalendarMutation.isPending ? 'Azzeramento...' : 'Azzera'}
-                            </button>
-                          </div>
+                          <Button
+                            onClick={() => syncIcalMutation.mutate(property.id)}
+                            disabled={syncIcalMutation.isPending}
+                          >
+                            <RefreshCw className={`w-4 h-4 mr-2 ${syncIcalMutation.isPending ? 'animate-spin' : ''}`} />
+                            {syncIcalMutation.isPending ? 'Sincronizzazione...' : 'Sincronizza'}
+                          </Button>
                         </div>
                       )}
+
+                      {/* Reset Calendar Blocks - always visible */}
+                      <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl border-2 border-red-200">
+                        <div>
+                          <p className="font-medium text-red-900">Azzera calendario</p>
+                          <p className="text-sm text-red-700">
+                            Elimina tutti i blocchi importati da calendari esterni
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleResetCalendar(property.id)}
+                          disabled={resetCalendarMutation.isPending}
+                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4 inline mr-2" />
+                          {resetCalendarMutation.isPending ? 'Azzeramento...' : 'Azzera'}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

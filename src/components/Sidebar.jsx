@@ -12,7 +12,8 @@ import {
   Users,
   Menu,
   X,
-  FileText
+  FileText,
+  Calculator
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -108,6 +109,7 @@ export const Sidebar = ({ isOpen, onToggle }) => {
           <NavItem to="/products" icon={Package} onClick={closeSidebar}>Prodotti</NavItem>
           <NavItem to="/templates" icon={FileText} onClick={closeSidebar}>Template</NavItem>
           <NavItem to="/costs" icon={DollarSign} onClick={closeSidebar}>Costi Fissi</NavItem>
+          <NavItem to="/tourist-tax" icon={Calculator} onClick={closeSidebar}>Tassa Soggiorno</NavItem>
         </nav>
 
         {/* Settings and user at bottom */}

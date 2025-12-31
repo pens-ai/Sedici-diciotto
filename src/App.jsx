@@ -21,6 +21,7 @@ import ResetPassword from './pages/auth/ResetPassword';
 import VerifyEmail from './pages/auth/VerifyEmail';
 import GuestCheckIn from './pages/GuestCheckIn';
 import SharePDF from './pages/SharePDF';
+import { TouristTax } from './pages/TouristTax';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -178,6 +179,16 @@ function App() {
                   <ProtectedRoute>
                     <AppLayout>
                       <Settings />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tourist-tax"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <TouristTax />
                     </AppLayout>
                   </ProtectedRoute>
                 }
