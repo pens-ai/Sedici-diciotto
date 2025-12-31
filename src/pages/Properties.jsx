@@ -122,6 +122,24 @@ export const Properties = () => {
     },
   });
 
+  const resetCalendarMutation = useMutation({
+    mutationFn: (propertyId) => icalApi.resetCalendarBlocks(propertyId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      toast.success(`Calendario azzerato: ${data.deletedCount} blocchi rimossi`);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error || 'Errore durante l\'azzeramento');
+    },
+  });
+
+  const handleResetCalendar = (propertyId) => {
+    if (window.confirm('Sei sicuro di voler azzerare il calendario?\n\nTutti i blocchi importati da calendari esterni verranno eliminati.')) {
+      resetCalendarMutation.mutate(propertyId);
+    }
+  };
+
   const handleAddProperty = () => {
     setEditingProperty(null);
     setPropertyForm({ name: '', beds: '', bathrooms: '', description: '' });
@@ -449,13 +467,23 @@ export const Properties = () => {
                                 : 'Mai sincronizzato'}
                             </p>
                           </div>
-                          <Button
-                            onClick={() => syncIcalMutation.mutate(property.id)}
-                            disabled={syncIcalMutation.isPending}
-                          >
-                            <RefreshCw className={`w-4 h-4 mr-2 ${syncIcalMutation.isPending ? 'animate-spin' : ''}`} />
-                            {syncIcalMutation.isPending ? 'Sincronizzazione...' : 'Sincronizza'}
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => syncIcalMutation.mutate(property.id)}
+                              disabled={syncIcalMutation.isPending}
+                            >
+                              <RefreshCw className={`w-4 h-4 mr-2 ${syncIcalMutation.isPending ? 'animate-spin' : ''}`} />
+                              {syncIcalMutation.isPending ? 'Sincronizzazione...' : 'Sincronizza'}
+                            </Button>
+                            <button
+                              onClick={() => handleResetCalendar(property.id)}
+                              disabled={resetCalendarMutation.isPending}
+                              className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-colors text-sm font-medium disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4 inline mr-2" />
+                              {resetCalendarMutation.isPending ? 'Azzeramento...' : 'Azzera'}
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
