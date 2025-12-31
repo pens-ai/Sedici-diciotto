@@ -64,6 +64,18 @@ export const TouristTax = () => {
     },
   });
 
+  // Get all unique properties from bookings
+  const allProperties = useMemo(() => {
+    if (!bookingsData) return [];
+    const propMap = new Map();
+    bookingsData.forEach(b => {
+      if (b.propertyId && b.property?.name) {
+        propMap.set(b.propertyId, { id: b.propertyId, name: b.property.name });
+      }
+    });
+    return [...propMap.values()];
+  }, [bookingsData]);
+
   // Calculate tax for each booking
   const taxCalculation = useMemo(() => {
     if (!bookingsData) return { bookings: [], totals: { totalTax: 0, totalNights: 0, totalGuests: 0, totalExempt: 0 } };
@@ -78,7 +90,12 @@ export const TouristTax = () => {
 
         // Only include bookings that have check-in within the selected month
         const checkIn = new Date(booking.checkIn);
-        return checkIn >= monthStart && checkIn <= monthEnd;
+        if (!(checkIn >= monthStart && checkIn <= monthEnd)) return false;
+
+        // Filter by property if selected
+        if (selectedProperty !== 'all' && booking.propertyId !== selectedProperty) return false;
+
+        return true;
       })
       .map(booking => {
         const checkIn = new Date(booking.checkIn);
@@ -129,25 +146,18 @@ export const TouristTax = () => {
       totalBookings: acc.totalBookings + 1
     }), { totalTax: 0, totalNights: 0, totalTaxableNights: 0, totalAllGuests: 0, totalPayingGuests: 0, totalExempt: 0, totalBookings: 0 });
 
-    // Get unique properties
-    const properties = [...new Map(processedBookings.map(b => [b.propertyId, { id: b.propertyId, name: b.property?.name || 'N/A' }])).values()];
+    return { bookings: processedBookings, totals };
+  }, [bookingsData, selectedYear, selectedMonth, selectedProperty]);
 
-    return { bookings: processedBookings, totals, properties };
-  }, [bookingsData, selectedYear, selectedMonth]);
-
-  // Calculate nights breakdown for selected property
+  // Calculate nights breakdown (already filtered by property in taxCalculation)
   const nightsBreakdown = useMemo(() => {
-    const filteredBookings = selectedProperty === 'all'
-      ? taxCalculation.bookings
-      : taxCalculation.bookings.filter(b => b.propertyId === selectedProperty);
-
     const breakdown = {
       '1': { label: '1 notte', totalGuests: 0, payingGuests: 0, exemptGuests: 0, bookings: 0 },
       '2': { label: '2 notti', totalGuests: 0, payingGuests: 0, exemptGuests: 0, bookings: 0 },
       '3+': { label: '3 o più notti', totalGuests: 0, payingGuests: 0, exemptGuests: 0, bookings: 0 },
     };
 
-    filteredBookings.forEach(booking => {
+    taxCalculation.bookings.forEach(booking => {
       const nights = booking.nights;
       let category;
       if (nights === 1) category = '1';
@@ -161,7 +171,7 @@ export const TouristTax = () => {
     });
 
     return breakdown;
-  }, [taxCalculation.bookings, selectedProperty]);
+  }, [taxCalculation.bookings]);
 
   const goToPreviousMonth = () => {
     if (selectedMonth === 0) {
@@ -220,8 +230,8 @@ export const TouristTax = () => {
         </div>
       </Card>
 
-      {/* Month Selector */}
-      <Card className="p-4">
+      {/* Month and Property Selector */}
+      <Card className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <button
             onClick={goToPreviousMonth}
@@ -242,6 +252,21 @@ export const TouristTax = () => {
           >
             <ChevronRight className="w-6 h-6" />
           </button>
+        </div>
+
+        {/* Property Filter */}
+        <div className="flex items-center justify-center gap-3 pt-2 border-t border-gray-200">
+          <Home className="w-5 h-5 text-gray-500" />
+          <select
+            value={selectedProperty}
+            onChange={(e) => setSelectedProperty(e.target.value)}
+            className="flex-1 max-w-xs px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="all">Tutte le case</option>
+            {allProperties.map(prop => (
+              <option key={prop.id} value={prop.id}>{prop.name}</option>
+            ))}
+          </select>
         </div>
       </Card>
 
@@ -305,6 +330,55 @@ export const TouristTax = () => {
           <p className="text-sm text-yellow-800">
             <strong>{taxCalculation.totals.totalExempt}</strong> ospiti esenti (minori di {MIN_AGE} anni)
           </p>
+        </Card>
+      )}
+
+      {/* Breakdown by nights */}
+      {taxCalculation.bookings.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Riepilogo per Numero di Notti</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Notti</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ospiti Totali</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ospiti Paganti</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Esenzioni</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {Object.entries(nightsBreakdown).map(([key, data]) => (
+                  <tr key={key} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-gray-900">{data.label}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center text-gray-600">{data.totalGuests}</td>
+                    <td className="px-4 py-3 text-center font-bold text-blue-600">{data.payingGuests}</td>
+                    <td className="px-4 py-3 text-center text-orange-600">
+                      {data.exemptGuests > 0 ? data.exemptGuests : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-gray-100">
+                <tr>
+                  <td className="px-4 py-3 font-semibold text-gray-700">Totale</td>
+                  <td className="px-4 py-3 text-center font-bold text-gray-900">
+                    {Object.values(nightsBreakdown).reduce((sum, d) => sum + d.totalGuests, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center font-bold text-blue-600">
+                    {Object.values(nightsBreakdown).reduce((sum, d) => sum + d.payingGuests, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center font-bold text-orange-600">
+                    {Object.values(nightsBreakdown).reduce((sum, d) => sum + d.exemptGuests, 0) || '-'}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </Card>
       )}
 
@@ -394,65 +468,6 @@ export const TouristTax = () => {
           </div>
         )}
       </Card>
-
-      {/* Breakdown by nights */}
-      {taxCalculation.bookings.length > 0 && (
-        <Card className="overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h3 className="text-lg font-semibold text-gray-900">Riepilogo per Numero di Notti</h3>
-            <select
-              value={selectedProperty}
-              onChange={(e) => setSelectedProperty(e.target.value)}
-              className="px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="all">Tutte le case</option>
-              {taxCalculation.properties.map(prop => (
-                <option key={prop.id} value={prop.id}>{prop.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Notti</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ospiti Totali</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ospiti Paganti</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Esenzioni</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {Object.entries(nightsBreakdown).map(([key, data]) => (
-                  <tr key={key} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-gray-900">{data.label}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center text-gray-600">{data.totalGuests}</td>
-                    <td className="px-4 py-3 text-center font-bold text-blue-600">{data.payingGuests}</td>
-                    <td className="px-4 py-3 text-center text-orange-600">
-                      {data.exemptGuests > 0 ? data.exemptGuests : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-gray-100">
-                <tr>
-                  <td className="px-4 py-3 font-semibold text-gray-700">Totale</td>
-                  <td className="px-4 py-3 text-center font-bold text-gray-900">
-                    {Object.values(nightsBreakdown).reduce((sum, d) => sum + d.totalGuests, 0)}
-                  </td>
-                  <td className="px-4 py-3 text-center font-bold text-blue-600">
-                    {Object.values(nightsBreakdown).reduce((sum, d) => sum + d.payingGuests, 0)}
-                  </td>
-                  <td className="px-4 py-3 text-center font-bold text-orange-600">
-                    {Object.values(nightsBreakdown).reduce((sum, d) => sum + d.exemptGuests, 0) || '-'}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </Card>
-      )}
     </div>
   );
 };
