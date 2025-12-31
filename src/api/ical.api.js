@@ -24,3 +24,8 @@ export const syncICalendar = async (propertyId) => {
   const response = await api.post(`/ical/sync/${propertyId}`);
   return response.data;
 };
+
+export const resetCalendarBlocks = async (propertyId) => {
+  const response = await api.delete(`/ical/reset/${propertyId}`);
+  return response.data;
+};

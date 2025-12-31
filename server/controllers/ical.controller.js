@@ -367,3 +367,31 @@ export const getICalSettings = async (req, res, next) => {
     next(error);
   }
 };
+
+// ============ RESET CALENDAR BLOCKS ============
+
+export const resetCalendarBlocks = async (req, res, next) => {
+  try {
+    const { propertyId } = req.params;
+
+    const property = await prisma.property.findFirst({
+      where: { id: propertyId, userId: req.userId },
+    });
+
+    if (!property) {
+      return res.status(404).json({ error: 'Proprietà non trovata' });
+    }
+
+    // Delete all calendar blocks for this property
+    const deleted = await prisma.calendarBlock.deleteMany({
+      where: { propertyId },
+    });
+
+    res.json({
+      message: 'Calendario azzerato',
+      deletedCount: deleted.count,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

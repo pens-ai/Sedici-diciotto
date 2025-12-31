@@ -8,6 +8,7 @@ import {
   syncICalendar,
   getICalSettings,
   getCalendarBlocks,
+  resetCalendarBlocks,
 } from '../controllers/ical.controller.js';
 
 const router = Router();
@@ -22,5 +23,6 @@ router.post('/generate-token/:propertyId', authenticate, generateICalToken);
 router.post('/add-url/:propertyId', authenticate, addICalUrl);
 router.delete('/remove-url/:propertyId/:urlId', authenticate, removeICalUrl);
 router.post('/sync/:propertyId', authenticate, syncICalendar);
+router.delete('/reset/:propertyId', authenticate, resetCalendarBlocks);
 
 export default router;

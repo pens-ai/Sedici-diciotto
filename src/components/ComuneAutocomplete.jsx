@@ -19,27 +19,48 @@ const ComuneAutocomplete = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedComune, setSelectedComune] = useState(null);
+  const [isValid, setIsValid] = useState(true);
   const wrapperRef = useRef(null);
   const debounceRef = useRef(null);
 
   // Load comune name when value (code) changes
   useEffect(() => {
     if (value && !selectedComune) {
-      // Try to find the comune in suggestions or search for it
       const loadComune = async () => {
         try {
+          // First try to search by code
           const results = await searchComuni(value);
-          const found = results.find(c => c.codice === value);
+          let found = results.find(c => c.codice === value);
+
+          // If not found by code, try exact name match (old data migration)
+          if (!found) {
+            const nameResults = await searchComuni(value);
+            found = nameResults.find(c => c.nome.toUpperCase() === value.toUpperCase());
+          }
+
           if (found) {
             setSelectedComune(found);
             setInputValue(found.nome);
+            setIsValid(true);
+            // Update parent with correct ISTAT code if value was a name
+            if (value !== found.codice && onChange) {
+              onChange(found.codice, found.nome, found.provincia);
+            }
+          } else {
+            // Keep the value as display text but mark as needing selection
+            setInputValue(value);
+            setIsValid(false);
           }
         } catch (err) {
-          // If code doesn't match, might be a name (old data)
           setInputValue(value);
+          setIsValid(false);
         }
       };
       loadComune();
+    } else if (!value) {
+      setInputValue('');
+      setSelectedComune(null);
+      setIsValid(true);
     }
   }, [value]);
 
@@ -58,11 +79,7 @@ const ComuneAutocomplete = ({
     const newValue = e.target.value;
     setInputValue(newValue);
     setSelectedComune(null);
-
-    // Clear the stored value when typing
-    if (onChange) {
-      onChange('', '', '');
-    }
+    setIsValid(false); // Mark as invalid until a selection is made
 
     // Debounce search
     if (debounceRef.current) {
@@ -76,6 +93,14 @@ const ComuneAutocomplete = ({
           const results = await searchComuni(newValue);
           setSuggestions(results);
           setIsOpen(true);
+
+          // Auto-select if exact match found
+          const exactMatch = results.find(
+            c => c.nome.toUpperCase() === newValue.toUpperCase()
+          );
+          if (exactMatch) {
+            handleSelect(exactMatch);
+          }
         } catch (err) {
           console.error('Error searching comuni:', err);
           setSuggestions([]);
@@ -86,7 +111,35 @@ const ComuneAutocomplete = ({
     } else {
       setSuggestions([]);
       setIsOpen(false);
+      // Clear value only when input is too short
+      if (onChange && newValue.length < 2) {
+        onChange('', '', '');
+      }
     }
+  };
+
+  // Handle blur - try to auto-select if there's an exact match
+  const handleBlur = async () => {
+    // Delay to allow click on suggestion to register
+    setTimeout(async () => {
+      if (!selectedComune && inputValue.length >= 2) {
+        try {
+          const results = await searchComuni(inputValue);
+          const exactMatch = results.find(
+            c => c.nome.toUpperCase() === inputValue.toUpperCase()
+          );
+          if (exactMatch) {
+            handleSelect(exactMatch);
+          } else if (onChange && !selectedComune) {
+            // No exact match found, clear the stored code
+            onChange('', '', '');
+          }
+        } catch (err) {
+          // Ignore
+        }
+      }
+      setIsOpen(false);
+    }, 200);
   };
 
   const handleSelect = (comune) => {
@@ -94,6 +147,7 @@ const ComuneAutocomplete = ({
     setInputValue(comune.nome);
     setIsOpen(false);
     setSuggestions([]);
+    setIsValid(true);
 
     if (onChange) {
       onChange(comune.codice, comune.nome, comune.provincia);
@@ -116,10 +170,13 @@ const ComuneAutocomplete = ({
         value={inputValue}
         onChange={handleInputChange}
         onFocus={handleFocus}
+        onBlur={handleBlur}
         placeholder={placeholder}
         required={required}
         disabled={disabled}
-        className={`w-full px-3 sm:px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${className}`}
+        className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+          !isValid && inputValue ? 'border-orange-300 bg-orange-50' : 'border-gray-200'
+        } ${className}`}
         autoComplete="off"
       />
 
