@@ -20,6 +20,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import VerifyEmail from './pages/auth/VerifyEmail';
 import GuestCheckIn from './pages/GuestCheckIn';
+import SharePDF from './pages/SharePDF';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,6 +90,16 @@ function App() {
 
               {/* Public check-in route for guests */}
               <Route path="/checkin/:token" element={<GuestCheckIn />} />
+
+              {/* Share PDF target - protected, receives shared PDFs from mobile */}
+              <Route
+                path="/share-pdf"
+                element={
+                  <ProtectedRoute>
+                    <SharePDF />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Protected routes */}
               <Route
